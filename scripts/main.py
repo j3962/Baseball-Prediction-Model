@@ -14,7 +14,7 @@ from sklearn.preprocessing import StandardScaler
 
 def load_data():
     col = ["sepal_len", "sepal_wid", "petal_len", "petal_wid", "class"]
-    iris_df = pd.read_csv("/home/jaylinux/Downloads/iris.data", names=col, sep=",")
+    iris_df = pd.read_csv("https://archive.ics.uci.edu/ml/machine-learning-databases/iris/iris.data", names=col, sep=",")
     print("the shape of the iris table is:", iris_df.shape)
     print("the various columns in the dataset are:", iris_df.columns)
     print(
