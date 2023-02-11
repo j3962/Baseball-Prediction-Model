@@ -1,5 +1,6 @@
-import sys
 import os
+import sys
+
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -44,12 +45,21 @@ def load_data():
         "The min value of Sepal_len, Sepal_wid, Petal_len and Petal_wid is: ",
         np.min(iris_np[:, :4], axis=0),
     )
+    for column in iris_df.iloc[:, :4]:
+        print("1st quantile for:", column)
+        print(np.quantile(iris_df.loc[:, column], 0.25))
+        print("2nd quantile for:", column)
+        print(np.quantile(iris_df.loc[:, column], 0.5))
+        print("3rd quantile for:", column)
+        print(np.quantile(iris_df.loc[:, column], 0.75))
+        print("4th quantile for:", column)
+        print(np.quantile(iris_df.loc[:, column], 1))
 
     return iris_df
 
 
 def plots(iris_df):
-    # Creating plot to check for distribution of numerical columns and to check for outliers
+    # Creating a box plot to check for distribution of numerical columns and to check for outliers
     trace0 = go.Box(
         y=iris_df["sepal_wid"][iris_df["class"] == "Iris-setosa"],
         boxmean=True,
@@ -105,9 +115,7 @@ def plots(iris_df):
 
     fig_box_1 = go.Figure(data=data, layout=layout)
     fig_box_1.write_html(
-        file="Jay_hw_01_plots/"
-             + "box_plot_distribution_1"
-               ".html",
+        file="Jay_hw_01_plots/" + "box_plot_distribution_1" ".html",
         include_plotlyjs="cdn",
     )
 
@@ -160,13 +168,11 @@ def plots(iris_df):
 
     fig_box_2 = go.Figure(data=data, layout=layout)
     fig_box_2.write_html(
-        file="Jay_hw_01_plots/"
-             + "box_plot_distribution_2"
-               ".html",
+        file="Jay_hw_01_plots/" + "box_plot_distribution_2" ".html",
         include_plotlyjs="cdn",
     )
 
-    # creating the plot of correlation matrix
+    # creating the plot of correlation matrix and check for dependent and independent variables
     data = [
         go.Heatmap(
             z=np.array(iris_df.corr().values),
@@ -183,9 +189,7 @@ def plots(iris_df):
 
     fig_heatmap = go.Figure(data=data, layout=layout)
     fig_heatmap.write_html(
-        file="Jay_hw_01_plots/"
-             + "fig_heatmap_of_correlation_mtrx"
-               ".html",
+        file="Jay_hw_01_plots/" + "fig_heatmap_of_correlation_mtrx" ".html",
         include_plotlyjs="cdn",
     )
 
@@ -204,9 +208,7 @@ def plots(iris_df):
         title="PetalLenVSPetalWid",
     )
     fig_scatt_ptl.write_html(
-        file="Jay_hw_01_plots/"
-             + "fig_scatt_plt_1"
-               ".html",
+        file="Jay_hw_01_plots/" + "fig_scatt_plt_1" ".html",
         include_plotlyjs="cdn",
     )
 
@@ -223,9 +225,7 @@ def plots(iris_df):
         title="SepalLenVsSepalWid",
     )
     fig_scatt_ptl.write_html(
-        file="Jay_hw_01_plots/"
-             + "fig_scatt_plt_2"
-               ".html",
+        file="Jay_hw_01_plots/" + "fig_scatt_plt_2" ".html",
         include_plotlyjs="cdn",
     )
 
@@ -243,15 +243,14 @@ def plots(iris_df):
         title="SepalLenVsPetalLen",
     )
     fig_scatt_sep_pep.write_html(
-        file="Jay_hw_01_plots/"
-             + "fig_scatt_plt_2"
-               ".html",
+        file="Jay_hw_01_plots/" + "fig_scatt_plt_2" ".html",
         include_plotlyjs="cdn",
     )
 
     return
 
 
+# ML random forrest model
 def ml_model_random_forrest(iris_df):
     encoding_func = {"Iris-setosa": 0, "Iris-versicolor": 1, "Iris-virginica": 2}
 
@@ -285,6 +284,7 @@ def ml_model_random_forrest(iris_df):
     return
 
 
+# ML logistic regression model
 def ml_model_logistic_regression(iris_df):
     encoding_func = {"Iris-setosa": 0, "Iris-versicolor": 1, "Iris-virginica": 2}
 
@@ -318,6 +318,7 @@ def ml_model_logistic_regression(iris_df):
     return
 
 
+# ML Gaussian Naive Bayes model
 def ml_model_GaussianNB(iris_df):
     encoding_func = {"Iris-setosa": 0, "Iris-versicolor": 1, "Iris-virginica": 2}
 
@@ -351,10 +352,12 @@ def ml_model_GaussianNB(iris_df):
     return
 
 
+# Plotting the mean of response plot
 def mean_of_response_plot(iris_df, column_nm, class_nm):
     # input colmn_nm and class_nm
     x = column_nm + "_bin"
     y = "is_" + (class_nm.lower()).replace("-", "_")
+    # creatin the is_class_nm column
     iris_df[y] = iris_df["class"].apply(
         lambda x: 1 if x.lower() == class_nm.lower() else 0
     )
@@ -402,9 +405,9 @@ def mean_of_response_plot(iris_df, column_nm, class_nm):
     # updating layout
     fig_bar.update_layout(
         title_text="Mean_response_plot_for_"
-                   + column_nm
-                   + "_and_"
-                   + (class_nm.lower()).replace("-", "_"),
+        + column_nm
+        + "_and_"
+        + (class_nm.lower()).replace("-", "_"),
         yaxis=dict(
             title=dict(text="Total Population"),
             side="left",
@@ -421,16 +424,17 @@ def mean_of_response_plot(iris_df, column_nm, class_nm):
     )
     fig_bar.write_html(
         file="Jay_hw_01_plots/"
-             + column_nm
-             + "_and_"
-             + "morp_"
-             + class_nm.replace("-", "_")
-             + ".html",
+        + column_nm
+        + "_and_"
+        + "morp_"
+        + class_nm.replace("-", "_")
+        + ".html",
         include_plotlyjs="cdn",
     )
     return
 
 
+# function for calling the mean of response plot with different parameters
 def call_morp(iris_df):
     j = 0
     i = 0
@@ -445,14 +449,17 @@ def call_morp(iris_df):
         )
         i += 1
 
+    return
+
 
 def main():
     df = load_data()
     plots(df)
-    # ml_model_random_forrest(df)
-    # ml_model_logistic_regression(df)
-    # ml_model_GaussianNB(df)
+    ml_model_random_forrest(df)
+    ml_model_logistic_regression(df)
+    ml_model_GaussianNB(df)
     call_morp(df)
+    return
 
 
 # Press the green button in the gutter to run the script.
