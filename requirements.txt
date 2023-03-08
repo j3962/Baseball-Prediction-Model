@@ -22,6 +22,10 @@ pandas==1.5.3
     # via -r /home/jaylinux/BDA_602/BDA_602_Assignment/requirements.in
 plotly==5.13.0
     # via -r /home/jaylinux/BDA_602/BDA_602_Assignment/requirements.in
+py4j==0.10.9.5
+    # via pyspark
+pyspark==3.3.2
+    # via -r /home/jaylinux/BDA_602/BDA_602_Assignment/requirements.in
 python-dateutil==2.8.2
     # via pandas
 pytz==2022.7.1
