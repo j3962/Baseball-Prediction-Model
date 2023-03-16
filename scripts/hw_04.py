@@ -1,12 +1,11 @@
 import os
 import sys
 
-import pandas
 import plotly.express as px
 import plotly.figure_factory as ff
 import plotly.graph_objects as go
-import statsmodels
-from sklearn import datasets
+import statsmodels.api as sm
+from data_loader import TestDatasets
 
 path = "Jay_hw_04_plots"
 isExist = os.path.exists(path)
@@ -151,7 +150,14 @@ def cont_resp_cat_predictor(data_set, pred_col, resp_col):
         yaxis_title=resp_col,
     )
     fig_2.write_html(
-        file=path + "cont_" + resp_col + "_cat_" + pred_col + "_violin_plot" + ".html",
+        file=path
+        + "/"
+        + "cont_"
+        + resp_col
+        + "_cat_"
+        + pred_col
+        + "_violin_plot"
+        + ".html",
         include_plotlyjs="cdn",
     )
 
@@ -191,8 +197,8 @@ def plot_graphs(df, pred_col, pred_type, resp_col, resp_type):
 
 def linear_reg_plots(y, x, fet_nm):
     feature_name = fet_nm
-    predictor = statsmodels.api.add_constant(x)
-    linear_regression_model = statsmodels.api.OLS(y, predictor)
+    predictor = sm.add_constant(x)
+    linear_regression_model = sm.OLS(y, predictor)
     linear_regression_model_fitted = linear_regression_model.fit()
     print(f"Variable: {feature_name}")
     print(linear_regression_model_fitted.summary())
@@ -216,7 +222,7 @@ def linear_reg_plots(y, x, fet_nm):
 
 def log_reg_plot(y, x, fet_nm):
     feature_name = fet_nm
-    log_reg = statsmodels.api.Logit(y, x).fit()
+    log_reg = sm.Logit(y, x).fit()
     print(f"Variable: {feature_name}")
     print(log_reg.summary())
     # Get the stats
@@ -237,12 +243,28 @@ def log_reg_plot(y, x, fet_nm):
 
 
 def main():
-    data = datasets.load_diabetes()
-    data_set = pandas.DataFrame(data.data, columns=data.feature_names)
-
-    data_set["target"] = data.target
-    predictors = data.feature_names
-    response = "target"
+    df_dict = {}
+    test_datasets = TestDatasets()
+    for test in test_datasets.get_all_available_datasets():
+        df, predictors, response = test_datasets.get_test_data_set(data_set_name=test)
+        df_dict[test] = [df, predictors, response]
+    flag = True
+    while flag:
+        print("Please select one of the five datasets given below:")
+        print("1. mpg")
+        print("2. tips")
+        print("3. titanic")
+        print("4. diabetes")
+        print("5. breast_cancer")
+        data_set_nm = input()
+        if data_set_nm in ["mpg", "tips", "titanic", "diabetes", "breast_cancer"]:
+            flag = False
+        else:
+            print("you have not selected one of the above datasets")
+    print("you have selected,", data_set_nm.strip().lower())
+    data_set = df_dict[data_set_nm.strip().lower()][0]
+    predictors = df_dict[data_set_nm.strip().lower()][1]
+    response = df_dict[data_set_nm.strip().lower()][2]
 
     if len(data_set[response].value_counts()) > 2:
         resp_type = "Continuous"
