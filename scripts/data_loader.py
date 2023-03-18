@@ -106,6 +106,5 @@ class TestDatasets:
             if data_set[predictor].dtype in ["category"]:
                 data_set[predictor] = data_set[predictor].astype(str)
 
-        print(f"Data set selected: {data_set_name}")
         data_set.reset_index(drop=True, inplace=True)
         return data_set, predictors, response
