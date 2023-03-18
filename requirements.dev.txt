@@ -95,7 +95,7 @@ ipykernel==6.20.2
     # via
     #   nbclassic
     #   notebook
-ipython==8.8.0
+ipython==8.11.0
     # via
     #   ipykernel
     #   jupyterlab
