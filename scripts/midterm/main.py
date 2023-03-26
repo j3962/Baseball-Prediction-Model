@@ -150,11 +150,14 @@ def cat_cat_2d_morp(df_ip, x1, x2, y):
             colorscale="YlGnBu",
             text=np.array(df["mean_size"]),
             texttemplate="%{text}",
+            colorbar=dict(title="Correlation"),
         )
     ]
     layout = go.Layout(
         {
-            "title": "Heatmap of Correlation ",
+            "title": x2.replace("_bin", "") + " vs " + x1.replace("_bin", ""),
+            "xaxis": dict(title=x1.replace("_bin", "")),
+            "yaxis": dict(title=x2.replace("_bin", "")),
         }
     )
 
@@ -167,7 +170,8 @@ def cat_cat_2d_morp(df_ip, x1, x2, y):
     # fig_heatmap.show()
     return {
         "Weighted_morp": df["weighted_morp"].sum(),
-        "Unweighted_morp": df["unweighted_morp"].sum() / len(df),
+        "Unweighted_morp": df["unweighted_morp"].sum()
+        / (df_ip[x1].nunique() * df_ip[x2].nunique()),
         "Plot_link": file_name,
     }
 
@@ -203,11 +207,14 @@ def cat_cont_2d_morp(df_ip, x1, x2, y):
             colorscale="YlGnBu",
             text=np.array(df["mean_size"]),
             texttemplate="%{text}",
+            colorbar=dict(title="Correlation"),
         )
     ]
     layout = go.Layout(
         {
-            "title": "Heatmap of Correlation ",
+            "title": x2.replace("_bin", "") + " vs " + x1.replace("_bin", ""),
+            "xaxis": dict(title=x1.replace("_bin", "")),
+            "yaxis": dict(title=x2.replace("_bin", ""), tickvals=np.array(df[x2])),
         }
     )
 
@@ -254,11 +261,14 @@ def cont_cont_2d_morp(df_ip, x1, x2, y):
             colorscale="YlGnBu",
             text=np.array(df["mean_size"]),
             texttemplate="%{text}",
+            colorbar=dict(title="Correlation"),
         )
     ]
     layout = go.Layout(
         {
-            "title": "Heatmap of Correlation ",
+            "title": x2.replace("_bin", "") + " vs " + x1.replace("_bin", ""),
+            "xaxis": dict(title=x1.replace("_bin", ""), tickvals=np.array(df[x1])),
+            "yaxis": dict(title=x2.replace("_bin", ""), tickvals=np.array(df[x2])),
         }
     )
 
@@ -646,9 +656,7 @@ def main():
         ].abs()
         cat_cat_2d_morp_df = (
             cat_cat_2d_morp_df.sort_index(axis=1, ascending=True)
-            .sort_values(
-                ["Correlation_T_Abs", "Correlation_V_Abs"], ascending=[False, False]
-            )
+            .sort_values("Weighted_morp", ascending=False)
             .reset_index(drop=True)
         )
 
@@ -687,7 +695,7 @@ def main():
         ].abs()
         cat_cont_2d_morp_df = (
             cat_cont_2d_morp_df.sort_index(axis=1, ascending=True)
-            .sort_values("Correlation_Abs", ascending=False)
+            .sort_values("Weighted_morp", ascending=False)
             .reset_index(drop=True)
         )
 
@@ -728,7 +736,7 @@ def main():
         ].abs()
         cont_cont_2d_morp_df = (
             cont_cont_2d_morp_df.sort_index(axis=1, ascending=True)
-            .sort_values("Correlation_Abs", ascending=False)
+            .sort_values("Weighted_morp", ascending=False)
             .reset_index(drop=True)
         )
 
