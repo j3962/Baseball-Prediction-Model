@@ -1,7 +1,11 @@
 import File_path as fp
+import numpy as np
+import pandas as pd
 import plotly.express as px
 import plotly.figure_factory as ff
 import plotly.graph_objects as go
+import statsmodels.api as sm
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 
 class PlotGraph:
@@ -234,3 +238,67 @@ class PlotGraph:
             include_plotlyjs="cdn",
         )
         return {"column_nm": pred_col, "plot_link_1": file_name, "plot_link_2": None}
+
+    @staticmethod
+    def linear_reg_plots(y, x, fet_nm):
+        predictor = sm.add_constant(x)
+        linear_regression_model = sm.OLS(y, predictor)
+        linear_regression_model_fitted = linear_regression_model.fit()
+
+        # Get the stats
+        t_value = round(linear_regression_model_fitted.tvalues[1], 6)
+        p_value = "{:.6e}".format(linear_regression_model_fitted.pvalues[1])
+        p_value = np.float64(p_value)
+
+        return {
+            "Column_name": fet_nm,
+            "Column_type": "Continuous",
+            "P_value": p_value,
+            "T_value": t_value,
+        }
+
+    @staticmethod
+    def log_reg_plots(y, X, fet_nm):
+        log_reg = sm.Logit(y, X).fit()
+
+        # Get the stats
+        t_value = round(log_reg.tvalues[0], 6)
+        p_value = "{:.6e}".format(log_reg.pvalues[0])
+        p_value = np.float64(p_value)
+
+        return {
+            "Column_name": fet_nm,
+            "Column_type": "Continuous",
+            "P_value": p_value,
+            "T_value": t_value,
+        }
+
+    @staticmethod
+    def rf_var_ranking_cont_resp(df, cont_var_pred_list, resp):
+
+        rf = RandomForestRegressor(n_estimators=42)
+        rf.fit(df[cont_var_pred_list], df[resp])
+        rank_list = []
+        for i, j in zip(df[cont_var_pred_list], rf.feature_importances_):
+            # if i in x_cont.columns:
+            rank_list.append({"Column_name": i, "RF_fet_imp_coeff": j})
+
+        rank_list_df = pd.DataFrame(rank_list)
+        return rank_list_df.sort_values(
+            "RF_fet_imp_coeff", ascending=False
+        ).reset_index(drop=True)
+
+    @staticmethod
+    def rf_var_ranking_cat_resp(df, cont_var_pred_list, resp):
+
+        rf = RandomForestClassifier(n_estimators=42)
+        rf.fit(df[cont_var_pred_list], df[resp])
+        rank_list = []
+        for i, j in zip(df[cont_var_pred_list], rf.feature_importances_):
+            # if i in x_cont.columns:
+            rank_list.append({"Column_name": i, "RF_fet_imp_coeff": j})
+
+        rank_list_df = pd.DataFrame(rank_list)
+        return rank_list_df.sort_values(
+            "RF_fet_imp_coeff", ascending=False
+        ).reset_index(drop=True)

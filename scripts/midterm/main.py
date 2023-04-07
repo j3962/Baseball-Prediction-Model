@@ -2,16 +2,12 @@ import os
 import sys
 
 import File_path as fp
-import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
-import statsmodels.api as sm
 from correlation_and_plots import PredsCorrelation as pc
 from data_loader import TestDatasets
+from Morp_2d_plots import Morp2dPlots as mp2d
 from morp_plots import MorpPlots as mp
 from pred_and_resp_graphs import PlotGraph as pg
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.preprocessing import LabelEncoder
 
 path = fp.GLOBAL_PATH
 isExist = os.path.exists(path)
@@ -26,270 +22,12 @@ if not isExist:
     os.mkdir(path_2d_morp)
 
 
-def linear_reg_plots(y, x, fet_nm):
-
-    predictor = sm.add_constant(x)
-    linear_regression_model = sm.OLS(y, predictor)
-    linear_regression_model_fitted = linear_regression_model.fit()
-
-    # Get the stats
-    t_value = round(linear_regression_model_fitted.tvalues[1], 6)
-    p_value = "{:.6e}".format(linear_regression_model_fitted.pvalues[1])
-    p_value = np.float64(p_value)
-
-    return {
-        "Column_name": fet_nm,
-        "Column_type": "Continuous",
-        "P_value": p_value,
-        "T_value": t_value,
-    }
-
-
-def log_reg_plots(y, X, fet_nm):
-
-    log_reg = sm.Logit(y, X).fit()
-
-    # Get the stats
-    t_value = round(log_reg.tvalues[0], 6)
-    p_value = "{:.6e}".format(log_reg.pvalues[0])
-    p_value = np.float64(p_value)
-
-    return {
-        "Column_name": fet_nm,
-        "Column_type": "Continuous",
-        "P_value": p_value,
-        "T_value": t_value,
-    }
-
-
-def rf_var_ranking_cont_resp(df, cont_var_pred_list, cat_var_pred_list, resp):
-    x_cont = df[cont_var_pred_list]
-    x_cat = df[cat_var_pred_list]
-    y = df[resp]
-
-    for i in x_cat:
-        le = LabelEncoder()
-        x_cat[i] = le.fit_transform(x_cat[i])
-
-    df = pd.concat([x_cont, x_cat], axis=1)
-
-    rf = RandomForestRegressor(n_estimators=150)
-    rf.fit(df, y)
-    rank_list = []
-    for i, j in zip(df, rf.feature_importances_):
-        if i in x_cont.columns:
-            rank_list.append(
-                {"Column_name": i, "Column_type": "Continuous", "fet_imp_coeff": j}
-            )
-        else:
-            rank_list.append(
-                {"Column_name": i, "Column_type": "Categorical", "fet_imp_coeff": j}
-            )
-
-    rank_list_df = pd.DataFrame(rank_list)
-    return rank_list_df.sort_values("fet_imp_coeff", ascending=False).reset_index(
-        drop=True
-    )
-
-
-def rf_var_ranking_cat_resp(df, cont_var_pred_list, cat_var_pred_list, resp):
-    x_cont = df[cont_var_pred_list]
-    x_cat = df[cat_var_pred_list]
-    y = df[resp]
-
-    for i in x_cat:
-        le = LabelEncoder()
-        x_cat[i] = le.fit_transform(x_cat[i])
-
-    df = pd.concat([x_cont, x_cat], axis=1)
-
-    rf = RandomForestClassifier(n_estimators=150)
-    rf.fit(df, y)
-    rank_list = []
-    for i, j in zip(df, rf.feature_importances_):
-        if i in x_cont.columns:
-            rank_list.append(
-                {"Column_name": i, "Column_type": "Continuous", "fet_imp_coeff": j}
-            )
-        else:
-            rank_list.append(
-                {"Column_name": i, "Column_type": "Categorical", "fet_imp_coeff": j}
-            )
-
-    rank_list_df = pd.DataFrame(rank_list)
-    return rank_list_df.sort_values("fet_imp_coeff", ascending=False).reset_index(
-        drop=True
-    )
-
-
-# @title cat_cat_2d_morp at B stg
-
-
-def cat_cat_2d_morp(df_ip, x1, x2, y):
-    df = df_ip
-
-    df = df[[x1, x2, y]].groupby([x1, x2]).agg(["mean", "size"]).reset_index()
-    df.columns = df.columns.to_flat_index().map("".join)
-
-    df["unweighted_morp"] = (
-        df[y + "mean"].to_frame().apply(lambda x: (df_ip[y].mean() - x) ** 2)
-    )
-    df["weighted_morp"] = df.apply(
-        lambda a: (a[y + "size"] / df[y + "size"].sum()) * a["unweighted_morp"], axis=1
-    )
-
-    df["mean_size"] = df.apply(
-        lambda a: "{:.6f} pop:{}".format(a[y + "mean"], a[y + "size"]), axis=1
-    )
-
-    data = [
-        go.Heatmap(
-            z=np.array(df[y + "mean"]),
-            x=np.array(df[x2]),
-            y=np.array(df[x1]),
-            colorscale="YlGnBu",
-            text=np.array(df["mean_size"]),
-            texttemplate="%{text}",
-            colorbar=dict(title="Correlation"),
-        )
-    ]
-    layout = go.Layout(
-        {
-            "title": x2.replace("_bin", "") + " vs " + x1.replace("_bin", ""),
-            "xaxis": dict(title=x1.replace("_bin", "")),
-            "yaxis": dict(title=x2.replace("_bin", "")),
-        }
-    )
-
-    fig_heatmap = go.Figure(data=data, layout=layout)
-    file_name = path_2d_morp + "/" + "cat_" + x1 + "_cat_" + x2 + "_2D_morp.html"
-    fig_heatmap.write_html(
-        file=file_name,
-        include_plotlyjs="cdn",
-    )
-    # fig_heatmap.show()
-    return {
-        "Weighted_morp": df["weighted_morp"].sum(),
-        "Unweighted_morp": df["unweighted_morp"].sum()
-        / (df_ip[x1].nunique() * df_ip[x2].nunique()),
-        "Plot_link": file_name,
-    }
-
-
-# @title cat_cont_2d_morp at B stg
-
-
-def cat_cont_2d_morp(df_ip, x1, x2, y):
-
-    df = df_ip
-    x2 = x2 + "_bin"
-
-    df = df[[x1, x2, y]].groupby([x1, x2]).agg(["mean", "size"]).reset_index()
-    df.columns = df.columns.to_flat_index().map("".join)
-
-    df["unweighted_morp"] = (
-        df[y + "mean"].to_frame().apply(lambda x: (df_ip[y].mean() - x) ** 2)
-    )
-
-    df["weighted_morp"] = df.apply(
-        lambda a: (a[y + "size"] / df[y + "size"].sum()) * a["unweighted_morp"], axis=1
-    )
-
-    df["mean_size"] = df.apply(
-        lambda a: "{:.6f} pop:{}".format(a[y + "mean"], a[y + "size"]), axis=1
-    )
-
-    data = [
-        go.Heatmap(
-            z=np.array(df[y + "mean"]),
-            x=np.array(df[x1]),
-            y=np.array(df[x2]),
-            colorscale="YlGnBu",
-            text=np.array(df["mean_size"]),
-            texttemplate="%{text}",
-            colorbar=dict(title="Correlation"),
-        )
-    ]
-    layout = go.Layout(
-        {
-            "title": x2.replace("_bin", "") + " vs " + x1.replace("_bin", ""),
-            "xaxis": dict(title=x1.replace("_bin", "")),
-            "yaxis": dict(title=x2.replace("_bin", ""), tickvals=np.array(df[x2])),
-        }
-    )
-
-    fig_heatmap = go.Figure(data=data, layout=layout)
-    file_name = path_2d_morp + "/" + "cat_" + x1 + "_cont_" + x2 + "_2D_morp.html"
-    fig_heatmap.write_html(
-        file=file_name,
-        include_plotlyjs="cdn",
-    )
-    # fig_heatmap.show()
-    return {
-        "Weighted_morp": df["weighted_morp"].sum(),
-        "Unweighted_morp": df["unweighted_morp"].sum() / len(df),
-        "Plot_link": file_name,
-    }
-
-
-def cont_cont_2d_morp(df_ip, x1, x2, y):
-
-    df = df_ip
-    x1 = x1 + "_bin"
-    x2 = x2 + "_bin"
-
-    df = df[[x1, x2, y]].groupby([x1, x2]).agg(["mean", "size"]).reset_index()
-    df.columns = df.columns.to_flat_index().map("".join)
-
-    df["unweighted_morp"] = (
-        df[y + "mean"].to_frame().apply(lambda x: (df_ip[y].mean() - x) ** 2)
-    )
-
-    df["weighted_morp"] = df.apply(
-        lambda a: (a[y + "size"] / df[y + "size"].sum()) * a["unweighted_morp"], axis=1
-    )
-
-    df["mean_size"] = df.apply(
-        lambda a: "{:.6f} pop:{}".format(a[y + "mean"], a[y + "size"]), axis=1
-    )
-
-    data = [
-        go.Heatmap(
-            z=np.array(df[y + "mean"]),
-            x=np.array(df[x1]),
-            y=np.array(df[x2]),
-            colorscale="YlGnBu",
-            text=np.array(df["mean_size"]),
-            texttemplate="%{text}",
-            colorbar=dict(title="Correlation"),
-        )
-    ]
-    layout = go.Layout(
-        {
-            "title": x2.replace("_bin", "") + " vs " + x1.replace("_bin", ""),
-            "xaxis": dict(title=x1.replace("_bin", ""), tickvals=np.array(df[x1])),
-            "yaxis": dict(title=x2.replace("_bin", ""), tickvals=np.array(df[x2])),
-        }
-    )
-
-    fig_heatmap = go.Figure(data=data, layout=layout)
-    file_name = path_2d_morp + "/" + "cont_" + x1 + "_cont_" + x2 + "_2D_morp.html"
-    fig_heatmap.write_html(
-        file=file_name,
-        include_plotlyjs="cdn",
-    )
-    # fig_heatmap.show()
-    return {
-        "Weighted_morp": df["weighted_morp"].sum(),
-        "Unweighted_morp": df["unweighted_morp"].sum() / len(df),
-        "Plot_link": file_name,
-    }
-
-
 def pred_typ(data_set, pred_list):
     pred_dict = {}
     for i in pred_list:
-        if data_set[i].nunique() == 2:
+        if i == "":
+            pred_dict[i] = "Continuous"
+        elif data_set[i].nunique() == 2:
             if data_set[i].dtype.kind in "iufc":
                 pred_dict[i] = "Continuous"
             else:
@@ -347,13 +85,20 @@ def main():
     cat_pred_list = [i for i in pred_dict if pred_dict[i] == "Categorical"]
     cont_pred_list = [i for i in pred_dict if pred_dict[i] == "Continuous"]
 
+    if resp_type == "Continuous":
+        rf_rank_df = pg.rf_var_ranking_cont_resp(data_set, cont_pred_list, response)
+
+    else:
+
+        rf_rank_df = pg.rf_var_ranking_cat_resp(data_set, cont_pred_list, response)
+
     cont_fet_prop_list = []
     cont_fet_prop_dict = {}
     for i in cont_pred_list:
         if resp_type == "Continuous":
             dict1 = pg.cont_resp_cont_pred(data_set, i, response)
             dict2 = mp.morp_cont_resp_cont_pred(data_set, i, "Continuous", response)
-            dict3 = linear_reg_plots(
+            dict3 = pg.linear_reg_plots(
                 data_set[response].to_numpy(), data_set[i].to_numpy(), i
             )
             cont_fet_prop_dict = {
@@ -370,7 +115,7 @@ def main():
         elif resp_type == "Boolean":
             dict1 = pg.cat_resp_cont_pred(data_set, i, response)
             dict2 = mp.morp_cat_resp_cont_pred(data_set, i, "Continuous", response)
-            dict3 = log_reg_plots(
+            dict3 = pg.log_reg_plots(
                 data_set[response].to_numpy(), data_set[i].to_numpy(), i
             )
             cont_fet_prop_dict = {
@@ -388,9 +133,13 @@ def main():
 
     cont_fet_prop_df = pd.DataFrame(cont_fet_prop_list)
     if len(cont_fet_prop_df) >= 1:
+        cont_fet_prop_df = cont_fet_prop_df.merge(
+            rf_rank_df, left_on=["Feature_nm"], right_on=["Column_name"]
+        )
         cont_fet_prop_df = cont_fet_prop_df.sort_values(
             by="Weighted_morp", ascending=False
-        ).reset_index(drop=True)
+        )
+        cont_fet_prop_df = cont_fet_prop_df.drop(labels=["Column_name"], axis=1)
 
     cat_fet_prop_list = []
     cat_fet_prop_dict = {}
@@ -421,21 +170,11 @@ def main():
         cat_fet_prop_list.append(cat_fet_prop_dict)
 
     cat_fet_prop_df = pd.DataFrame(cat_fet_prop_list)
+
     if len(cat_fet_prop_df) >= 1:
         cat_fet_prop_df = cat_fet_prop_df.sort_values(
             by="Weighted_morp", ascending=False
         ).reset_index(drop=True)
-
-    # if resp_type == "Continuous":
-    #     rf_rank_df = rf_var_ranking_cont_resp(
-    #         data_set, cont_pred_list, cat_pred_list, response
-    #     )
-    #
-    # else:
-    #
-    #     rf_rank_df = rf_var_ranking_cat_resp(
-    #         data_set, cont_pred_list, cat_pred_list, response
-    #     )
 
     # cont_cont_correlation driver and logic
     cont_cont_list = []
@@ -544,18 +283,18 @@ def main():
     if len(cat_cat_list_t) >= 1 and len(cat_cat_list_v) >= 1:
         cat_cat_corr_t_df = pd.DataFrame(cat_cat_list_t)
         cat_cat_corr_v_df = pd.DataFrame(cat_cat_list_v)
-        cat_cat_corr_t_df = cat_cat_corr_t_df.sort_values(
-            by="Correlation_T", ascending=False
-        ).reset_index(drop=True)
-        cat_cat_corr_v_df = cat_cat_corr_v_df.sort_values(
-            by="Correlation_V", ascending=False
-        ).reset_index(drop=True)
         cat_cat_corr_t_htmp_plt = pc.corr_heatmap_plots(
             cat_cat_corr_t_df, "Cat_1", "Cat_2", "Correlation_T"
         )
         cat_cat_corr_v_htmp_plt = pc.corr_heatmap_plots(
             cat_cat_corr_v_df, "Cat_1", "Cat_2", "Correlation_V"
         )
+        cat_cat_corr_t_df = cat_cat_corr_t_df.sort_values(
+            by="Correlation_T", ascending=False
+        ).reset_index(drop=True)
+        cat_cat_corr_v_df = cat_cat_corr_v_df.sort_values(
+            by="Correlation_V", ascending=False
+        ).reset_index(drop=True)
         cat_cat_corr_t_df = cat_cat_corr_t_df[
             cat_cat_corr_t_df["Cat_1"] != cat_cat_corr_t_df["Cat_2"]
         ]
@@ -629,7 +368,7 @@ def main():
                 if i == j:
                     continue
                 else:
-                    dict1 = cat_cat_2d_morp(data_set, i, j, response)
+                    dict1 = mp2d.cat_cat_2d_morp(data_set, i, j, response)
                 cat_cat_2d_morp_dict = {
                     "Cat_1": i,
                     "Cat_2": j,
@@ -675,7 +414,7 @@ def main():
                 if i == j:
                     continue
                 else:
-                    dict1 = cat_cont_2d_morp(data_set, i, j, response)
+                    dict1 = mp2d.cat_cont_2d_morp(data_set, i, j, response)
                     # print(dict1)
                 cat_cont_2d_morp_dict = {
                     "Cat": i,
@@ -714,7 +453,7 @@ def main():
                 if i == j:
                     continue
                 else:
-                    dict1 = cont_cont_2d_morp(data_set, i, j, response)
+                    dict1 = mp2d.cont_cont_2d_morp(data_set, i, j, response)
                     # print(dict1)
                 cont_cont_2d_morp_dict = {
                     "Cont_1": i,
