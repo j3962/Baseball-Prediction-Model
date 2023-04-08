@@ -138,7 +138,7 @@ def main():
         )
         cont_fet_prop_df = cont_fet_prop_df.sort_values(
             by="Weighted_morp", ascending=False
-        )
+        ).reset_index(drop=True)
         cont_fet_prop_df = cont_fet_prop_df.drop(labels=["Column_name"], axis=1)
 
     cat_fet_prop_list = []
@@ -211,14 +211,16 @@ def main():
         cont_cont_corr_htmp_plt = pc.corr_heatmap_plots(
             cont_cont_corr_df, "Cont_1", "Cont_2", "Correlation"
         )
-        cont_cont_corr_df = cont_cont_corr_df.sort_values(
-            by="Correlation", ascending=False
-        ).reset_index(drop=True)
         cont_cont_corr_df = cont_cont_corr_df[
             cont_cont_corr_df["Cont_1"] != cont_cont_corr_df["Cont_2"]
         ]
+        cont_cont_corr_df = cont_cont_corr_df.sort_values(
+            by="Correlation", ascending=False
+        ).reset_index(drop=True)
+
     else:
         cont_cont_corr_df = pd.DataFrame(cont_cont_list)
+        cont_cont_corr_htmp_plt = ""
 
     # cat_cat_correlation driver and logic
     cat_cat_list_t = []
@@ -289,21 +291,24 @@ def main():
         cat_cat_corr_v_htmp_plt = pc.corr_heatmap_plots(
             cat_cat_corr_v_df, "Cat_1", "Cat_2", "Correlation_V"
         )
-        cat_cat_corr_t_df = cat_cat_corr_t_df.sort_values(
-            by="Correlation_T", ascending=False
-        ).reset_index(drop=True)
-        cat_cat_corr_v_df = cat_cat_corr_v_df.sort_values(
-            by="Correlation_V", ascending=False
-        ).reset_index(drop=True)
         cat_cat_corr_t_df = cat_cat_corr_t_df[
             cat_cat_corr_t_df["Cat_1"] != cat_cat_corr_t_df["Cat_2"]
         ]
         cat_cat_corr_v_df = cat_cat_corr_v_df[
             cat_cat_corr_v_df["Cat_1"] != cat_cat_corr_v_df["Cat_2"]
         ]
+        cat_cat_corr_t_df = cat_cat_corr_t_df.sort_values(
+            by="Correlation_T", ascending=False
+        ).reset_index(drop=True)
+        cat_cat_corr_v_df = cat_cat_corr_v_df.sort_values(
+            by="Correlation_V", ascending=False
+        ).reset_index(drop=True)
+
     else:
         cat_cat_corr_t_df = pd.DataFrame(cat_cat_list_t)
         cat_cat_corr_v_df = pd.DataFrame(cat_cat_list_v)
+        cat_cat_corr_v_htmp_plt = ""
+        cat_cat_corr_t_htmp_plt = ""
 
     # cat_cont_correlatino driver and logic
     cat_cont_list = []
@@ -342,18 +347,19 @@ def main():
 
     if len(cat_cont_list) >= 1:
         cat_cont_corr_df = pd.DataFrame(cat_cont_list)
-        cat_cont_corr_df = cat_cont_corr_df.sort_values(
-            by="Correlation", ascending=False
-        ).reset_index(drop=True)
         cat_cont_corr_htmp_plt = pc.corr_heatmap_plots(
             cat_cont_corr_df, "Cont", "Cat", "Correlation"
         )
         cat_cont_corr_df = cat_cont_corr_df[
             cat_cont_corr_df["Cont"] != cat_cont_corr_df["Cat"]
         ]
+        cat_cont_corr_df = cat_cont_corr_df.sort_values(
+            by="Correlation", ascending=False
+        ).reset_index(drop=True)
+
     else:
         cat_cont_corr_df = pd.DataFrame(cat_cont_list)
-
+        cat_cont_corr_htmp_plt = ""
     # brute force cat cat logic
 
     # if cat_pred_listif \
@@ -587,7 +593,7 @@ def main():
         out.write("<h4>Categorical Categorical Brute force combination</h4>")
         out.write(cat_cat_2d_morp_df.to_html())
         out.write("<br><br>")
-        out.write("<h4>Categorical Continuous Brute force combination</h4>")
+        out.write("<h4>Cate0gorical Continuous Brute force combination</h4>")
         out.write(cat_cont_2d_morp_df.to_html())
         out.write("<br><br>")
         out.write("<h4>Continuous Continuous Brute force combination</h4>")
