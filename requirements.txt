@@ -4,26 +4,59 @@
 #
 #    pip-compile --output-file=/home/jaylinux/BDA_602/BDA_602_Assignment/requirements.txt /home/jaylinux/BDA_602/BDA_602_Assignment/requirements.in
 #
+contourpy==1.0.7
+    # via matplotlib
+cycler==0.11.0
+    # via matplotlib
+fonttools==4.39.0
+    # via matplotlib
 greenlet==2.0.2
     # via sqlalchemy
 joblib==1.2.0
     # via scikit-learn
+kiwisolver==1.4.4
+    # via matplotlib
 mariadb==1.1.6
     # via -r /home/jaylinux/BDA_602/BDA_602_Assignment/requirements.in
+matplotlib==3.7.1
+    # via seaborn
 numpy==1.24.1
     # via
     #   -r /home/jaylinux/BDA_602/BDA_602_Assignment/requirements.in
+    #   contourpy
+    #   matplotlib
     #   pandas
+    #   patsy
     #   scikit-learn
     #   scipy
+    #   seaborn
+    #   statsmodels
 packaging==23.0
-    # via mariadb
+    # via
+    #   mariadb
+    #   matplotlib
+    #   statsmodels
 pandas==1.5.3
-    # via -r /home/jaylinux/BDA_602/BDA_602_Assignment/requirements.in
+    # via
+    #   -r /home/jaylinux/BDA_602/BDA_602_Assignment/requirements.in
+    #   seaborn
+    #   statsmodels
+patsy==0.5.3
+    # via statsmodels
+pillow==9.4.0
+    # via matplotlib
 plotly==5.13.0
     # via -r /home/jaylinux/BDA_602/BDA_602_Assignment/requirements.in
+py4j==0.10.9.5
+    # via pyspark
+pyparsing==3.0.9
+    # via matplotlib
+pyspark==3.3.2
+    # via -r /home/jaylinux/BDA_602/BDA_602_Assignment/requirements.in
 python-dateutil==2.8.2
-    # via pandas
+    # via
+    #   matplotlib
+    #   pandas
 pytz==2022.7.1
     # via pandas
 scikit-learn==1.2.1
@@ -32,9 +65,16 @@ scipy==1.10.0
     # via
     #   -r /home/jaylinux/BDA_602/BDA_602_Assignment/requirements.in
     #   scikit-learn
+    #   statsmodels
+seaborn==0.12.2
+    # via -r /home/jaylinux/BDA_602/BDA_602_Assignment/requirements.in
 six==1.16.0
-    # via python-dateutil
+    # via
+    #   patsy
+    #   python-dateutil
 sqlalchemy==2.0.4
+    # via -r /home/jaylinux/BDA_602/BDA_602_Assignment/requirements.in
+statsmodels==0.13.5
     # via -r /home/jaylinux/BDA_602/BDA_602_Assignment/requirements.in
 tenacity==8.1.0
     # via plotly
