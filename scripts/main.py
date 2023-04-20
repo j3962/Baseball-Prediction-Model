@@ -1,467 +1,608 @@
 import os
 import sys
 
-import numpy as np
+import File_path as fp
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objs as go
-from plotly.subplots import make_subplots
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.naive_bayes import GaussianNB
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
+import sqlalchemy
+from correlation_and_plots import PredsCorrelation as pc
+from Morp_2d_plots import Morp2dPlots as mp2d
+from morp_plots import MorpPlots as mp
+from pred_and_resp_graphs import PlotGraph as pg
+from sqlalchemy import text
 
-path = "Jay_hw_01_plots"
+path = fp.GLOBAL_PATH
 isExist = os.path.exists(path)
 
 if not isExist:
     os.mkdir(path)
 
-
-def load_data():
-    col = ["sepal_len", "sepal_wid", "petal_len", "petal_wid", "class"]
-    iris_df = pd.read_csv(
-        "https://archive.ics.uci.edu/ml/machine-learning-databases/iris/iris.data",
-        names=col,
-        sep=",",
-    )
-    print("the shape of the iris table is:", iris_df.shape)
-    print("the various columns in the dataset are:", iris_df.columns)
-    print(
-        "The no of flower categories and there count is:\n",
-        iris_df["class"].value_counts(),
-    )
-    iris_np = iris_df.to_numpy()
-    print(
-        "The mean value of Sepal_len, Sepal_wid, Petal_len and Petal_wid is: ",
-        np.mean(iris_np[:, :4], axis=0),
-    )
-    print(
-        "The max value of Sepal_len, Sepal_wid, Petal_len and Petal_wid is: ",
-        np.max(iris_np[:, :4], axis=0),
-    )
-    print(
-        "The min value of Sepal_len, Sepal_wid, Petal_len and Petal_wid is: ",
-        np.min(iris_np[:, :4], axis=0),
-    )
-    for column in iris_df.iloc[:, :4]:
-        print("1st quantile for:", column)
-        print(np.quantile(iris_df.loc[:, column], 0.25))
-        print("2nd quantile for:", column)
-        print(np.quantile(iris_df.loc[:, column], 0.5))
-        print("3rd quantile for:", column)
-        print(np.quantile(iris_df.loc[:, column], 0.75))
-        print("4th quantile for:", column)
-        print(np.quantile(iris_df.loc[:, column], 1))
-
-    return iris_df
-
-
-def plots(iris_df):
-    # Creating a box plot to check for distribution of numerical columns and to check for outliers
-    trace0 = go.Box(
-        y=iris_df["sepal_wid"][iris_df["class"] == "Iris-setosa"],
-        boxmean=True,
-        name="setosa",
-        marker_color="#3D9970",
-        showlegend=False,
-    )
-
-    trace1 = go.Box(
-        y=iris_df["sepal_wid"][iris_df["class"] == "Iris-versicolor"],
-        boxmean=True,
-        name="versicolor",
-        marker_color="#FF4136",
-        showlegend=False,
-    )
-
-    trace2 = go.Box(
-        y=iris_df["sepal_wid"][iris_df["class"] == "Iris-virginica"],
-        boxmean=True,
-        name="virginica",
-        marker_color="#FF851B",
-        showlegend=False,
-    )
-    trace3 = go.Box(
-        y=iris_df["sepal_len"][iris_df["class"] == "Iris-setosa"],
-        boxmean=True,
-        name="setosa",
-        marker_color="#3D9970",
-    )
-
-    trace4 = go.Box(
-        y=iris_df["sepal_len"][iris_df["class"] == "Iris-versicolor"],
-        boxmean=True,
-        name="versicolor",
-        marker_color="#FF4136",
-    )
-
-    trace5 = go.Box(
-        y=iris_df["sepal_len"][iris_df["class"] == "Iris-virginica"],
-        boxmean=True,
-        name="virginica",
-        marker_color="#FF851B",
-    )
-
-    data = [trace0, trace1, trace2, trace3, trace4, trace5]
-
-    layout = go.Layout(
-        title="Sepal Width and Sepal Length distribution for different Classes",
-        boxmode="group",
-        xaxis=dict(title="Classes"),
-        yaxis=dict(title="Length in cm"),
-    )
-
-    fig_box_1 = go.Figure(data=data, layout=layout)
-    fig_box_1.write_html(
-        file="Jay_hw_01_plots/" + "box_plot_distribution_1" ".html",
-        include_plotlyjs="cdn",
-    )
-
-    trace0 = go.Box(
-        y=iris_df["petal_wid"][iris_df["class"] == "Iris-setosa"],
-        boxmean=True,
-        name="setosa",
-        showlegend=False,
-    )
-
-    trace1 = go.Box(
-        y=iris_df["petal_wid"][iris_df["class"] == "Iris-versicolor"],
-        boxmean=True,
-        name="versicolor",
-        showlegend=False,
-    )
-
-    trace2 = go.Box(
-        y=iris_df["petal_wid"][iris_df["class"] == "Iris-virginica"],
-        boxmean=True,
-        name="virginica",
-        showlegend=False,
-    )
-    trace3 = go.Box(
-        y=iris_df["petal_len"][iris_df["class"] == "Iris-setosa"],
-        boxmean=True,
-        name="setosa",
-    )
-
-    trace4 = go.Box(
-        y=iris_df["petal_len"][iris_df["class"] == "Iris-versicolor"],
-        boxmean=True,
-        name="versicolor",
-    )
-
-    trace5 = go.Box(
-        y=iris_df["petal_len"][iris_df["class"] == "Iris-virginica"],
-        boxmean=True,
-        name="virginica",
-    )
-
-    data = [trace0, trace1, trace2, trace3, trace4, trace5]
-
-    layout = go.Layout(
-        title="Petal Width and Petal Length distribution for different Classes",
-        boxmode="group",
-        xaxis=dict(title="Classes"),
-        yaxis=dict(title="Length in cm"),
-    )
-
-    fig_box_2 = go.Figure(data=data, layout=layout)
-    fig_box_2.write_html(
-        file="Jay_hw_01_plots/" + "box_plot_distribution_2" ".html",
-        include_plotlyjs="cdn",
-    )
-
-    # creating the plot of correlation matrix and check for dependent and independent variables
-    data = [
-        go.Heatmap(
-            z=np.array(iris_df.corr().values),
-            x=np.array(iris_df.corr().columns),
-            y=np.array(iris_df.corr().columns),
-            colorscale="YlGnBu",
-        )
-    ]
-    layout = go.Layout(
-        {
-            "title": "Heatmap of Correlation ",
-        }
-    )
-
-    fig_heatmap = go.Figure(data=data, layout=layout)
-    fig_heatmap.write_html(
-        file="Jay_hw_01_plots/" + "fig_heatmap_of_correlation_mtrx" ".html",
-        include_plotlyjs="cdn",
-    )
-
-    # Scatter plots for reinforcing the correlationship between columns
-    fig_scatt_ptl = px.scatter(
-        iris_df,
-        x=iris_df["petal_wid"],
-        y=["petal_len"],
-        color=iris_df["class"],
-        symbol=iris_df["class"],
-    )
-
-    fig_scatt_ptl.update_layout(
-        xaxis_title="Petal_wid_cm",
-        yaxis_title="Petal_len_cm",
-        title="PetalLenVSPetalWid",
-    )
-    fig_scatt_ptl.write_html(
-        file="Jay_hw_01_plots/" + "fig_scatt_plt_1" ".html",
-        include_plotlyjs="cdn",
-    )
-
-    fig_scatt_sep = px.scatter(
-        iris_df,
-        x=iris_df["sepal_wid"],
-        y=["sepal_len"],
-        color=iris_df["class"],
-        symbol=iris_df["class"],
-    )
-    fig_scatt_sep.update_layout(
-        xaxis_title="Sepal_wid_cm",
-        yaxis_title="Sepal_len_cm",
-        title="SepalLenVsSepalWid",
-    )
-    fig_scatt_ptl.write_html(
-        file="Jay_hw_01_plots/" + "fig_scatt_plt_2" ".html",
-        include_plotlyjs="cdn",
-    )
-
-    # the weak correlation between sepal_len and petal_len
-    fig_scatt_sep_pep = px.scatter(
-        iris_df,
-        x=iris_df["sepal_len"],
-        y=["petal_len"],
-        color=iris_df["class"],
-        symbol=iris_df["class"],
-    )
-    fig_scatt_sep_pep.update_layout(
-        xaxis_title="sepal_len_cm",
-        yaxis_title="petal_len_cm",
-        title="SepalLenVsPetalLen",
-    )
-    fig_scatt_sep_pep.write_html(
-        file="Jay_hw_01_plots/" + "fig_scatt_plt_2" ".html",
-        include_plotlyjs="cdn",
-    )
-
-    return
-
-
-# ML random forrest model
-def ml_model_random_forrest(iris_df):
-    encoding_func = {"Iris-setosa": 0, "Iris-versicolor": 1, "Iris-virginica": 2}
-
-    iris_df["class_encoded"] = iris_df["class"].map(encoding_func)
-
-    # DataFrame to numpy values
-
-    X_orig = iris_df[["sepal_len", "sepal_wid", "petal_len", "petal_wid"]].values
-
-    y = iris_df["class_encoded"].values
-
-    print("Model via Pipeline Predictions")
-
-    pipeline = Pipeline(
-        [
-            ("Scaler", StandardScaler()),
-            ("RandomForest", RandomForestClassifier(random_state=1234)),
-        ]
-    )
-
-    pipeline.fit(X_orig, y)
-
-    probability = pipeline.predict_proba(X_orig)
-
-    prediction = pipeline.predict(X_orig)
-
-    print(f"Probability for RandomForrest: {probability}")
-
-    print(f"Predictions for RandomForrest: {prediction}")
-
-    return
-
-
-# ML logistic regression model
-def ml_model_logistic_regression(iris_df):
-    encoding_func = {"Iris-setosa": 0, "Iris-versicolor": 1, "Iris-virginica": 2}
-
-    iris_df["class_encoded"] = iris_df["class"].map(encoding_func)
-
-    # DataFrame to numpy values
-
-    X_orig = iris_df[["sepal_len", "sepal_wid", "petal_len", "petal_wid"]].values
-
-    y = iris_df["class_encoded"].values
-
-    print("Model via Pipeline Predictions")
-
-    pipeline = Pipeline(
-        [
-            ("Scaler", StandardScaler()),
-            ("logisticRegr", LogisticRegression()),
-        ]
-    )
-
-    pipeline.fit(X_orig, y)
-
-    probability = pipeline.predict_proba(X_orig)
-
-    prediction = pipeline.predict(X_orig)
-
-    print(f"Probability for LogisticRegression: {probability}")
-
-    print(f"Predictions for LogisticRegression: {prediction}")
-
-    return
-
-
-# ML Gaussian Naive Bayes model
-def ml_model_GaussianNB(iris_df):
-    encoding_func = {"Iris-setosa": 0, "Iris-versicolor": 1, "Iris-virginica": 2}
-
-    iris_df["class_encoded"] = iris_df["class"].map(encoding_func)
-
-    # DataFrame to numpy values
-
-    X_orig = iris_df[["sepal_len", "sepal_wid", "petal_len", "petal_wid"]].values
-
-    y = iris_df["class_encoded"].values
-
-    print("Model via Pipeline Predictions")
-
-    pipeline = Pipeline(
-        [
-            ("Scaler", StandardScaler()),
-            ("Gnb", GaussianNB()),
-        ]
-    )
-
-    pipeline.fit(X_orig, y)
-
-    probability = pipeline.predict_proba(X_orig)
-
-    prediction = pipeline.predict(X_orig)
-
-    print(f"Probability for GaussianNB: {probability}")
-
-    print(f"Predictions for GaussianNB: {prediction}")
-
-    return
-
-
-# Plotting the mean of response plot
-def mean_of_response_plot(iris_df, column_nm, class_nm):
-    # input colmn_nm and class_nm
-    x = column_nm + "_bin"
-    y = "is_" + (class_nm.lower()).replace("-", "_")
-    # creatin the is_class_nm column
-    iris_df[y] = iris_df["class"].apply(
-        lambda x: 1 if x.lower() == class_nm.lower() else 0
-    )
-    # creating bins for each colmn_nm and takin their avg
-    iris_df[x] = (pd.cut(iris_df[column_nm], bins=10, right=True)).apply(
-        lambda x: x.mid
-    )
-    # findin bin mean for given class
-    hist_df = iris_df[x].value_counts().to_frame().reset_index()
-    bin_mean_df = iris_df[[x, y]].groupby(x).mean().reset_index()
-
-    fig_bar = go.Figure()
-    fig_bar = make_subplots(specs=[[{"secondary_y": True}]])
-    # first subgraph of bins and their counts
-    fig_bar.add_trace(
-        go.Bar(
-            x=hist_df["index"],
-            y=hist_df[x],
-            name=column_nm,
-        ),
-        secondary_y=False,
-    )
-    # Second subgraph of bin mean for given class
-    fig_bar.add_trace(
-        go.Scatter(
-            x=bin_mean_df[x],
-            y=bin_mean_df[y],
-            name="bin_avg_for_" + class_nm,
-            mode="lines+markers",
-            # marker=True,
-            marker=dict(color="Red"),
-        ),
-        secondary_y=True,
-    )
-    # overall avg graph for given class
-    fig_bar.add_trace(
-        go.Scatter(
-            x=bin_mean_df[x],
-            y=[iris_df[y].mean()] * len(bin_mean_df[x]),
-            name=class_nm + "_avg",
-            mode="lines",
-        ),
-        secondary_y=True,
-    )
-    # updating layout
-    fig_bar.update_layout(
-        title_text="Mean_response_plot_for_"
-        + column_nm
-        + "_and_"
-        + (class_nm.lower()).replace("-", "_"),
-        yaxis=dict(
-            title=dict(text="Total Population"),
-            side="left",
-        ),
-        yaxis2=dict(
-            title=dict(text="Response"),
-            side="right",
-            overlaying="y",
-            tickmode="auto",
-        ),
-        xaxis=dict(
-            title=dict(text=column_nm + "_bins"),
-        ),
-    )
-    fig_bar.write_html(
-        file="Jay_hw_01_plots/"
-        + column_nm
-        + "_and_"
-        + "morp_"
-        + class_nm.replace("-", "_")
-        + ".html",
-        include_plotlyjs="cdn",
-    )
-    return
-
-
-# function for calling the mean of response plot with different parameters
-def call_morp(iris_df):
-    j = 0
-    i = 0
-    while j < 4:
-        if i == 3:
-            i = 0
-            j = j + 1
-        if j == 4:
-            break
-        mean_of_response_plot(
-            iris_df, list(iris_df.columns)[j], list(iris_df["class"].unique())[i]
-        )
-        i += 1
-
-    return
+path_2d_morp = fp.GLOBAL_PATH_2D_MORP
+isExist = os.path.exists(path_2d_morp)
+
+if not isExist:
+    os.mkdir(path_2d_morp)
+
+
+def pred_typ(data_set, pred_list):
+    pred_dict = {}
+    for i in pred_list:
+        if i == "":
+            pred_dict[i] = "Continuous"
+        elif data_set[i].nunique() == 2:
+            if data_set[i].dtype.kind in "iufc":
+                pred_dict[i] = "Continuous"
+            else:
+                pred_dict[i] = "Categorical"
+        elif type(data_set[i][0]) == str:
+            pred_dict[i] = "Categorical"
+        else:
+            pred_dict[i] = "Continuous"
+    return pred_dict
+
+
+def url_click(url):
+    if url:
+        if "," in url:
+            x = url.split(",")
+            return f'{x[0]} <a target="_blank" href="{x[1]}">link to plot</a>'
+        else:
+            return f'<a target="_blank" href="{url}">link to plot</a>'
 
 
 def main():
-    df = load_data()
-    plots(df)
-    ml_model_random_forrest(df)
-    ml_model_logistic_regression(df)
-    ml_model_GaussianNB(df)
-    call_morp(df)
-    return
+
+    db_database = "baseball"
+    db_user = "root"
+    db_pass = "1997"
+    db_host = "localhost"
+    connect_string = (
+        f"mariadb+mariadbconnector://{db_user}:{db_pass}@{db_host}/{db_database}"
+    )
+    sql_engine = sqlalchemy.create_engine(connect_string)
+
+    query = """
+            SELECT * from final_feat_stats;
+        """
+
+    df = pd.DataFrame(sql_engine.connect().execute(text(query)))
+    df_new = df.iloc[:, 6:].fillna(0)
+
+    for i in df_new.columns:
+        if df_new[i].dtype == "O":
+            df_new[i] = df_new[i].astype(float)
+
+    data_set = df_new
+    predictors = df_new.columns[0:14].to_list()
+    response = str(df_new.columns[14])
+    #
+    if len(data_set[response].value_counts()) > 2:
+        resp_type = "Continuous"
+
+    elif len(data_set[response].value_counts()) == 2:
+        resp_type = "Boolean"
+
+    else:
+        print("what's up bro??! How many categories my response var got??")
+
+    pred_dict = pred_typ(data_set, predictors)
+
+    cat_pred_list = [i for i in pred_dict if pred_dict[i] == "Categorical"]
+    cont_pred_list = [i for i in pred_dict if pred_dict[i] == "Continuous"]
+    #
+    if resp_type == "Continuous":
+        rf_rank_df = pg.rf_var_ranking_cont_resp(data_set, cont_pred_list, response)
+
+    else:
+
+        rf_rank_df = pg.rf_var_ranking_cat_resp(data_set, cont_pred_list, response)
+
+    cont_fet_prop_list = []
+    cont_fet_prop_dict = {}
+    for i in cont_pred_list:
+        if resp_type == "Continuous":
+            dict1 = pg.cont_resp_cont_pred(data_set, i, response)
+            dict2 = mp.morp_cont_resp_cont_pred(data_set, i, "Continuous", response)
+            dict3 = pg.linear_reg_plots(
+                data_set[response].to_numpy(), data_set[i].to_numpy(), i
+            )
+            cont_fet_prop_dict = {
+                "Feature_nm": i,
+                "Plot_link1": dict1["plot_link_1"],
+                "Plot_link2": None,
+                "Weighted_morp": dict2["weighted_morp"],
+                "Unweighted_morp": dict2["unweighted_morp"],
+                "Morp_plot_link": dict2["Plot_link"],
+                "P_value": dict3["P_value"],
+                "T_value": dict3["T_value"],
+            }
+
+        elif resp_type == "Boolean":
+            dict1 = pg.cat_resp_cont_pred(data_set, i, response)
+            dict2 = mp.morp_cat_resp_cont_pred(data_set, i, "Continuous", response)
+            dict3 = pg.log_reg_plots(
+                data_set[response].to_numpy(), data_set[i].to_numpy(), i
+            )
+            cont_fet_prop_dict = {
+                "Feature_nm": i,
+                "Plot_link1": dict1["plot_link_1"],
+                "Plot_link2": dict1["plot_link_2"],
+                "Weighted_morp": dict2["weighted_morp"],
+                "Unweighted_morp": dict2["unweighted_morp"],
+                "Morp_plot_link": dict2["Plot_link"],
+                "P_value": dict3["P_value"],
+                "T_value": dict3["T_value"],
+            }
+
+        cont_fet_prop_list.append(cont_fet_prop_dict)
+
+    cont_fet_prop_df = pd.DataFrame(cont_fet_prop_list)
+    if len(cont_fet_prop_df) >= 1:
+        cont_fet_prop_df = cont_fet_prop_df.merge(
+            rf_rank_df, left_on=["Feature_nm"], right_on=["Column_name"]
+        )
+        cont_fet_prop_df = cont_fet_prop_df.sort_values(
+            by="Weighted_morp", ascending=False
+        ).reset_index(drop=True)
+        cont_fet_prop_df = cont_fet_prop_df.drop(labels=["Column_name"], axis=1)
+
+    cat_fet_prop_list = []
+    cat_fet_prop_dict = {}
+    for i in cat_pred_list:
+        if resp_type == "Continuous":
+            dict1 = pg.cont_resp_cat_pred(data_set, i, response)
+            dict2 = mp.morp_cont_resp_cat_pred(data_set, i, "Continuous", response)
+            cat_fet_prop_dict = {
+                "Feature_nm": i,
+                "Plot_link1": dict1["plot_link_1"],
+                "Plot_link2": dict1["plot_link_2"],
+                "Weighted_morp": dict2["weighted_morp"],
+                "Unweighted_morp": dict2["unweighted_morp"],
+                "Morp_plot_link": dict2["Plot_link"],
+            }
+
+        elif resp_type == "Boolean":
+            dict1 = pg.cat_resp_cat_pred(data_set, i, response)
+            dict2 = mp.morp_cat_resp_cat_pred(data_set, i, "Continuous", response)
+            cat_fet_prop_dict = {
+                "Feature_nm": i,
+                "Plot_link1": dict1["plot_link_1"],
+                "Plot_link2": None,
+                "Weighted_morp": dict2["weighted_morp"],
+                "Unweighted_morp": dict2["unweighted_morp"],
+                "Morp_plot_link": dict2["Plot_link"],
+            }
+        cat_fet_prop_list.append(cat_fet_prop_dict)
+
+    cat_fet_prop_df = pd.DataFrame(cat_fet_prop_list)
+
+    if len(cat_fet_prop_df) >= 1:
+        cat_fet_prop_df = cat_fet_prop_df.sort_values(
+            by="Weighted_morp", ascending=False
+        ).reset_index(drop=True)
+
+    # cont_cont_correlation driver and logic
+    cont_cont_list = []
+    cont_cont_dict = {}
+    for i in cont_pred_list:
+        for j in cont_pred_list:
+            if resp_type == "Continuous":
+                cont_cont_dict = {
+                    "Cont_1": i,
+                    "Cont_2": j,
+                    "Correlation": pc.cont_pred_corr(data_set[i], data_set[j]),
+                    "Cont_1_morp_url": mp.morp_cont_resp_cont_pred(
+                        data_set, i, "Continuous", response
+                    )["Plot_link"],
+                    "Cont_2_morp_url": mp.morp_cont_resp_cont_pred(
+                        data_set, j, "Continuous", response
+                    )["Plot_link"],
+                }
+            elif resp_type == "Boolean":
+                cont_cont_dict = {
+                    "Cont_1": i,
+                    "Cont_2": j,
+                    "Correlation": pc.cont_pred_corr(data_set[i], data_set[j]),
+                    "Cont_1_morp_url": mp.morp_cat_resp_cont_pred(
+                        data_set, i, "Continuous", response
+                    )["Plot_link"],
+                    "Cont_2_morp_url": mp.morp_cat_resp_cont_pred(
+                        data_set, j, "Continuous", response
+                    )["Plot_link"],
+                }
+            cont_cont_list.append(cont_cont_dict)
+    if len(cont_cont_list) >= 1:
+        cont_cont_corr_df = pd.DataFrame(cont_cont_list)
+        cont_cont_corr_htmp_plt = pc.corr_heatmap_plots(
+            cont_cont_corr_df, "Cont_1", "Cont_2", "Correlation"
+        )
+        cont_cont_corr_df = cont_cont_corr_df[
+            cont_cont_corr_df["Cont_1"] != cont_cont_corr_df["Cont_2"]
+        ]
+        cont_cont_corr_df = cont_cont_corr_df.sort_values(
+            by="Correlation", ascending=False
+        ).reset_index(drop=True)
+
+    else:
+        cont_cont_corr_df = pd.DataFrame(cont_cont_list)
+        cont_cont_corr_htmp_plt = ""
+
+    # cat_cat_correlation driver and logic
+    cat_cat_list_t = []
+    cat_cat_dict_t = {}
+    cat_cat_list_v = []
+    cat_cat_dict_v = {}
+    for i in cat_pred_list:
+        for j in cat_pred_list:
+            if resp_type == "Continuous":
+                cat_cat_dict_v = {
+                    "Cat_1": i,
+                    "Cat_2": j,
+                    "Correlation_V": pc.cat_correlation(data_set[i], data_set[j]),
+                    "Cat_1_morp_url": mp.morp_cont_resp_cat_pred(
+                        data_set, i, "Categorical", response
+                    )["Plot_link"],
+                    "Cat_2_morp_url": mp.morp_cont_resp_cat_pred(
+                        data_set, j, "Categorical", response
+                    )["Plot_link"],
+                }
+                cat_cat_dict_t = {
+                    "Cat_1": i,
+                    "Cat_2": j,
+                    "Correlation_T": pc.cat_correlation(
+                        data_set[i], data_set[j], tschuprow=True
+                    ),
+                    "Cat_1_morp_url": mp.morp_cont_resp_cat_pred(
+                        data_set, i, "Categorical", response
+                    )["Plot_link"],
+                    "Cat_2_morp_url": mp.morp_cont_resp_cat_pred(
+                        data_set, j, "Categorical", response
+                    )["Plot_link"],
+                }
+            elif resp_type == "Boolean":
+                cat_cat_dict_v = {
+                    "Cat_1": i,
+                    "Cat_2": j,
+                    "Correlation_V": pc.cat_correlation(data_set[i], data_set[j]),
+                    "Cat_1_morp_url": mp.morp_cat_resp_cat_pred(
+                        data_set, i, "Categorical", response
+                    )["Plot_link"],
+                    "Cat_2_morp_url": mp.morp_cat_resp_cat_pred(
+                        data_set, j, "Categorical", response
+                    )["Plot_link"],
+                }
+                cat_cat_dict_t = {
+                    "Cat_1": i,
+                    "Cat_2": j,
+                    "Correlation_T": pc.cat_correlation(
+                        data_set[i], data_set[j], tschuprow=True
+                    ),
+                    "Cat_1_morp_url": mp.morp_cat_resp_cat_pred(
+                        data_set, i, "Categorical", response
+                    )["Plot_link"],
+                    "Cat_2_morp_url": mp.morp_cat_resp_cat_pred(
+                        data_set, j, "Categorical", response
+                    )["Plot_link"],
+                }
+            cat_cat_list_t.append(cat_cat_dict_t)
+            cat_cat_list_v.append(cat_cat_dict_v)
+
+    if len(cat_cat_list_t) >= 1 and len(cat_cat_list_v) >= 1:
+        cat_cat_corr_t_df = pd.DataFrame(cat_cat_list_t)
+        cat_cat_corr_v_df = pd.DataFrame(cat_cat_list_v)
+        cat_cat_corr_t_htmp_plt = pc.corr_heatmap_plots(
+            cat_cat_corr_t_df, "Cat_1", "Cat_2", "Correlation_T"
+        )
+        cat_cat_corr_v_htmp_plt = pc.corr_heatmap_plots(
+            cat_cat_corr_v_df, "Cat_1", "Cat_2", "Correlation_V"
+        )
+        cat_cat_corr_t_df = cat_cat_corr_t_df[
+            cat_cat_corr_t_df["Cat_1"] != cat_cat_corr_t_df["Cat_2"]
+        ]
+        cat_cat_corr_v_df = cat_cat_corr_v_df[
+            cat_cat_corr_v_df["Cat_1"] != cat_cat_corr_v_df["Cat_2"]
+        ]
+        cat_cat_corr_t_df = cat_cat_corr_t_df.sort_values(
+            by="Correlation_T", ascending=False
+        ).reset_index(drop=True)
+        cat_cat_corr_v_df = cat_cat_corr_v_df.sort_values(
+            by="Correlation_V", ascending=False
+        ).reset_index(drop=True)
+
+    else:
+        cat_cat_corr_t_df = pd.DataFrame(cat_cat_list_t)
+        cat_cat_corr_v_df = pd.DataFrame(cat_cat_list_v)
+        cat_cat_corr_v_htmp_plt = ""
+        cat_cat_corr_t_htmp_plt = ""
+
+    # cat_cont_correlatino driver and logic
+    cat_cont_list = []
+    cat_cont_dict = {}
+    for i in cat_pred_list:
+        for j in cont_pred_list:
+            if resp_type == "Continuous":
+                cat_cont_dict = {
+                    "Cat": i,
+                    "Cont": j,
+                    "Correlation": pc.cat_cont_correlation_ratio(
+                        data_set[i], data_set[j]
+                    ),
+                    "Cat_morp_url": mp.morp_cont_resp_cat_pred(
+                        data_set, i, "Categorical", response
+                    )["Plot_link"],
+                    "Cont_morp_url": mp.morp_cont_resp_cont_pred(
+                        data_set, j, "Continuous", response
+                    )["Plot_link"],
+                }
+            elif resp_type == "Boolean":
+                cat_cont_dict = {
+                    "Cat": i,
+                    "Cont": j,
+                    "Correlation": pc.cat_cont_correlation_ratio(
+                        data_set[i], data_set[j]
+                    ),
+                    "Cat_morp_url": mp.morp_cat_resp_cat_pred(
+                        data_set, i, "Categorical", response
+                    )["Plot_link"],
+                    "Cont_morp_url": mp.morp_cat_resp_cont_pred(
+                        data_set, j, "Continuous", response
+                    )["Plot_link"],
+                }
+            cat_cont_list.append(cat_cont_dict)
+
+    if len(cat_cont_list) >= 1:
+        cat_cont_corr_df = pd.DataFrame(cat_cont_list)
+        cat_cont_corr_htmp_plt = pc.corr_heatmap_plots(
+            cat_cont_corr_df, "Cont", "Cat", "Correlation"
+        )
+        cat_cont_corr_df = cat_cont_corr_df[
+            cat_cont_corr_df["Cont"] != cat_cont_corr_df["Cat"]
+        ]
+        cat_cont_corr_df = cat_cont_corr_df.sort_values(
+            by="Correlation", ascending=False
+        ).reset_index(drop=True)
+
+    else:
+        cat_cont_corr_df = pd.DataFrame(cat_cont_list)
+        cat_cont_corr_htmp_plt = ""
+    # brute force cat cat logic
+
+    # if cat_pred_listif \
+
+    if len(cat_pred_list) > 1:
+
+        cat_cat_2d_morp_list = []
+        cat_cat_2d_morp_dict = {}
+
+        for i in cat_pred_list:
+            for j in cat_pred_list:
+                if i == j:
+                    continue
+                else:
+                    dict1 = mp2d.cat_cat_2d_morp(data_set, i, j, response)
+                cat_cat_2d_morp_dict = {
+                    "Cat_1": i,
+                    "Cat_2": j,
+                    "Weighted_morp": dict1["Weighted_morp"],
+                    "Unweighted_morp": dict1["Unweighted_morp"],
+                    "Plot_link": dict1["Plot_link"],
+                }
+                cat_cat_2d_morp_list.append(cat_cat_2d_morp_dict)
+
+        cat_cat_2d_morp_df = pd.DataFrame(cat_cat_2d_morp_list)
+        cat_cat_2d_morp_df = cat_cat_2d_morp_df.merge(
+            cat_cat_corr_t_df, left_on=["Cat_1", "Cat_2"], right_on=["Cat_1", "Cat_2"]
+        )
+        cat_cat_2d_morp_df = cat_cat_2d_morp_df.merge(
+            cat_cat_corr_v_df,
+            left_on=["Cat_1", "Cat_2", "Cat_1_morp_url", "Cat_2_morp_url"],
+            right_on=["Cat_1", "Cat_2", "Cat_1_morp_url", "Cat_2_morp_url"],
+        )
+        cat_cat_2d_morp_df["Correlation_T_Abs"] = cat_cat_2d_morp_df[
+            "Correlation_T"
+        ].abs()
+        cat_cat_2d_morp_df["Correlation_V_Abs"] = cat_cat_2d_morp_df[
+            "Correlation_V"
+        ].abs()
+        cat_cat_2d_morp_df = (
+            cat_cat_2d_morp_df.sort_index(axis=1, ascending=True)
+            .sort_values("Weighted_morp", ascending=False)
+            .reset_index(drop=True)
+        )
+
+    else:
+        cat_cat_2d_morp_df = pd.DataFrame([])
+
+    # brute force cat cont logic
+
+    if len(cat_pred_list) > 0 and len(cont_pred_list) > 0:
+
+        cat_cont_2d_morp_list = []
+        cat_cont_2d_morp_dict = {}
+
+        for i in cat_pred_list:
+            for j in cont_pred_list:
+                if i == j:
+                    continue
+                else:
+                    dict1 = mp2d.cat_cont_2d_morp(data_set, i, j, response)
+                    # print(dict1)
+                cat_cont_2d_morp_dict = {
+                    "Cat": i,
+                    "Cont": j,
+                    "Weighted_morp": dict1["Weighted_morp"],
+                    "Unweighted_morp": dict1["Unweighted_morp"],
+                    "Plot_link": dict1["Plot_link"],
+                }
+                cat_cont_2d_morp_list.append(cat_cont_2d_morp_dict)
+
+        cat_cont_2d_morp_df = pd.DataFrame(cat_cont_2d_morp_list)
+        cat_cont_2d_morp_df = cat_cont_2d_morp_df.merge(
+            cat_cont_corr_df, left_on=["Cat", "Cont"], right_on=["Cat", "Cont"]
+        )
+        cat_cont_2d_morp_df["Correlation_Abs"] = cat_cont_2d_morp_df[
+            "Correlation"
+        ].abs()
+        cat_cont_2d_morp_df = (
+            cat_cont_2d_morp_df.sort_index(axis=1, ascending=True)
+            .sort_values("Weighted_morp", ascending=False)
+            .reset_index(drop=True)
+        )
+
+    else:
+        cat_cont_2d_morp_df = pd.DataFrame([])
+
+        # brute force cont_cont_logic
+
+    if len(cont_pred_list) > 1:
+
+        cont_cont_2d_morp_list = []
+        cont_cont_2d_morp_dict = {}
+
+        for i in cont_pred_list:
+            for j in cont_pred_list:
+                if i == j:
+                    continue
+                else:
+                    dict1 = mp2d.cont_cont_2d_morp(data_set, i, j, response)
+                    # print(dict1)
+                cont_cont_2d_morp_dict = {
+                    "Cont_1": i,
+                    "Cont_2": j,
+                    "Weighted_morp": dict1["Weighted_morp"],
+                    "Unweighted_morp": dict1["Unweighted_morp"],
+                    "Plot_link": dict1["Plot_link"],
+                }
+                cont_cont_2d_morp_list.append(cont_cont_2d_morp_dict)
+
+        cont_cont_2d_morp_df = pd.DataFrame(cont_cont_2d_morp_list)
+        cont_cont_2d_morp_df = cont_cont_2d_morp_df.merge(
+            cont_cont_corr_df,
+            left_on=["Cont_1", "Cont_2"],
+            right_on=["Cont_1", "Cont_2"],
+        )
+        cont_cont_2d_morp_df["Correlation_Abs"] = cont_cont_2d_morp_df[
+            "Correlation"
+        ].abs()
+        cont_cont_2d_morp_df = (
+            cont_cont_2d_morp_df.sort_index(axis=1, ascending=True)
+            .sort_values("Weighted_morp", ascending=False)
+            .reset_index(drop=True)
+        )
+
+    else:
+        cont_cont_2d_morp_df = pd.DataFrame([])
+
+    table_styles = [
+        {"selector": "", "props": [("border", "1px solid black")]},
+        {
+            "selector": "th",
+            "props": [
+                ("background-color", "lightgray"),
+                ("color", "black"),
+                ("font-size", "12pt"),
+                ("font-family", "Arial, Helvetica, sans-serif"),
+                ("border", "1px solid black"),
+            ],
+        },
+        {
+            "selector": "td",
+            "props": [
+                ("font-size", "12pt"),
+                ("font-family", "Arial, Helvetica, sans-serif"),
+                ("border", "1px solid black"),
+            ],
+        },
+    ]
+
+    # making prop dfs clickables
+    cat_fet_prop_df = cat_fet_prop_df.style.format(
+        {"Plot_link1": url_click, "Plot_link2": url_click, "Morp_plot_link": url_click}
+    ).set_table_styles(table_styles)
+
+    cont_fet_prop_df = cont_fet_prop_df.style.format(
+        {"Plot_link1": url_click, "Plot_link2": url_click, "Morp_plot_link": url_click}
+    ).set_table_styles(table_styles)
+
+    # making corr dfs clickable
+    cont_cont_corr_df = cont_cont_corr_df.style.format(
+        {"Cont_1_morp_url": url_click, "Cont_2_morp_url": url_click}
+    ).set_table_styles(table_styles)
+
+    cat_cat_corr_t_df = cat_cat_corr_t_df.style.format(
+        {"Cat_1_morp_url": url_click, "Cat_2_morp_url": url_click}
+    ).set_table_styles(table_styles)
+
+    cat_cat_corr_v_df = cat_cat_corr_v_df.style.format(
+        {"Cat_1_morp_url": url_click, "Cat_2_morp_url": url_click}
+    ).set_table_styles(table_styles)
+
+    cat_cont_corr_df = cat_cont_corr_df.style.format(
+        {"Cat_morp_url": url_click, "Cont_morp_url": url_click}
+    ).set_table_styles(table_styles)
+
+    # making brute force dfs clickable
+
+    cat_cat_2d_morp_df = cat_cat_2d_morp_df.style.format(
+        {
+            "Cat_1_morp_url": url_click,
+            "Cat_2_morp_url": url_click,
+            "Plot_link": url_click,
+        }
+    ).set_table_styles(table_styles)
+
+    cat_cont_2d_morp_df = cat_cont_2d_morp_df.style.format(
+        {"Cat_morp_url": url_click, "Cont_morp_url": url_click, "Plot_link": url_click}
+    ).set_table_styles(table_styles)
+
+    cont_cont_2d_morp_df = cont_cont_2d_morp_df.style.format(
+        {
+            "Cont_1_morp_url": url_click,
+            "Cont_2_morp_url": url_click,
+            "Plot_link": url_click,
+        }
+    ).set_table_styles(table_styles)
+
+    with open("dataset.html", "w") as out:
+        out.write("<h5>Continuous Predictors Properties</h5>")
+        out.write(cont_fet_prop_df.to_html())
+        out.write("<br><br>")
+        out.write("<h5>Categorical Predictors Properties</h5>")
+        out.write(cat_fet_prop_df.to_html())
+        out.write("<h5>Categorical/ Categorical Correlation</h5>")
+        out.write("<br><br>")
+        out.write("<h4>Correlation Tschuprow Matrix Heatmap</h4>")
+        out.write(cat_cat_corr_t_htmp_plt)
+        out.write("<br><br>")
+        out.write("<h4>Correlation Cramer's Matrix Heatmap</h4>")
+        out.write(cat_cat_corr_v_htmp_plt)
+        out.write("<br><br>")
+        out.write("<h4>Correlation Tschuprow Matrix</h4>")
+        out.write(cat_cat_corr_t_df.to_html())
+        out.write("<br><br>")
+        out.write("<h4>Correlation Cramer's Matrix</h4>")
+        out.write(cat_cat_corr_v_df.to_html())
+        out.write("<br><br>")
+        out.write("<h5>Categorical/ Continuous Correlation</h5>")
+        out.write(cat_cont_corr_htmp_plt)
+        out.write("<br><br>")
+        out.write("<h4>Categorical/ Continuous Correlation Matrix</h4>")
+        out.write(cat_cont_corr_df.to_html())
+        out.write("<br><br>")
+        out.write("<h5>Continuous/ Continuous Correlation</h5>")
+        out.write(cont_cont_corr_htmp_plt)
+        out.write("<br><br>")
+        out.write("<h4>Continuous/ Continuous Correlation Matrix</h4>")
+        out.write(cont_cont_corr_df.to_html())
+        out.write("<br><br>")
+        out.write("<h4>Categorical Categorical Brute force combination</h4>")
+        out.write(cat_cat_2d_morp_df.to_html())
+        out.write("<br><br>")
+        out.write("<h4>Cate0gorical Continuous Brute force combination</h4>")
+        out.write(cat_cont_2d_morp_df.to_html())
+        out.write("<br><br>")
+        out.write("<h4>Continuous Continuous Brute force combination</h4>")
+        out.write(cont_cont_2d_morp_df.to_html())
 
 
-# Press the green button in the gutter to run the script.
 if __name__ == "__main__":
     sys.exit(main())
