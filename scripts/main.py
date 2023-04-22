@@ -53,7 +53,7 @@ def url_click(url):
             return f'<a target="_blank" href="{url}">link to plot</a>'
 
 
-def html_report(data_set, predictors, response,file_name):
+def html_report(data_set, predictors, response, file_name):
 
     if len(data_set[response].value_counts()) > 2:
         resp_type = "Continuous"
@@ -639,8 +639,6 @@ def main():
             df_new[i] = df_new[i].astype(float)
 
     data_set = df_new
-    predictors = df_new.columns[0:16].to_list()
-    response = str(df_new.columns[16])
 
     print("*" * 80)
     print("*" * 80)
@@ -648,31 +646,62 @@ def main():
     # initially I did not have the series streak features.
     print("Without the streak columns!")
     ml_models(data_set, df_new.columns[0:14].to_list(), str(df_new.columns[16]))
-    html_report(data_set, df_new.columns[0:14].to_list(), str(df_new.columns[16]), "dataset.html")
+    html_report(
+        data_set,
+        df_new.columns[0:14].to_list(),
+        str(df_new.columns[16]),
+        "dataset.html",
+    )
 
     print("*" * 80)
     print("*" * 80)
 
     print("with the streak features")
     ml_models(data_set, df_new.columns[0:16].to_list(), str(df_new.columns[16]))
-    html_report(data_set, df_new.columns[0:16].to_list(), str(df_new.columns[16]), "dataset_1.html")
+    html_report(
+        data_set,
+        df_new.columns[0:16].to_list(),
+        str(df_new.columns[16]),
+        "dataset_1.html",
+    )
 
     print("*" * 80)
     print("*" * 80)
 
-    print("after taking out hits_per_pitch and hits_per_innings_ratio features. "
-          "These columns had high correlation with batting_average_against_ratio")
-    ml_models(data_set, [i for i in df_new.columns[0:16].to_list() if i not in ['hits_per_innings_ration','hits_per_pitch_ratio']], str(df_new.columns[16]))
-    html_report(data_set, [i for i in df_new.columns[0:16].to_list() if i not in ['hits_per_innings_ration','hits_per_pitch_ratio']], str(df_new.columns[16]), "dataset_2.html")
+    print(
+        "after taking out hits_per_pitch and hits_per_innings_ratio features. "
+        "These columns had high correlation with batting_average_against_ratio"
+    )
+    ml_models(
+        data_set,
+        [
+            i
+            for i in df_new.columns[0:16].to_list()
+            if i not in ["hits_per_innings_ration", "hits_per_pitch_ratio"]
+        ],
+        str(df_new.columns[16]),
+    )
+    html_report(
+        data_set,
+        [
+            i
+            for i in df_new.columns[0:16].to_list()
+            if i not in ["hits_per_innings_ration", "hits_per_pitch_ratio"]
+        ],
+        str(df_new.columns[16]),
+        "dataset_2.html",
+    )
 
     print("*" * 80)
     print("*" * 80)
 
-    print("I feel I could try some different combinations of features too, "
-          "but they give the same accuracy as well. I am not sure how to further improve the model in terms of accuracy."
-          " I will read more upon this and can hopefully improve the model over time. "
-          "I would say my last model with fewer features is my best model. "
-          "As it gives the same accuracy as previous models with more features.")
+    print(
+        "I feel I could try some different combinations of features too, "
+        "but they give the same accuracy as well. I am not sure how to further improve the model in terms of accuracy."
+        " I will read more upon this and can hopefully improve the model over time. "
+        "I would say my last model with fewer features is my best model. "
+        "As it gives the same accuracy as previous models with more features."
+    )
 
 
 if __name__ == "__main__":
