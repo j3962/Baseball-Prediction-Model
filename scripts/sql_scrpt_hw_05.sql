@@ -156,7 +156,7 @@ create index team_idx  on team_streak(team_id);
 create index game_idx on team_streak(game_id);
 
 
-drop table team_streaks_intm;
+drop table if exists team_streaks_intm;
 
 create table team_streaks_intm as
 select
