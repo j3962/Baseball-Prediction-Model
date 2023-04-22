@@ -2,12 +2,16 @@ import os
 import sys
 
 import File_path as fp
+import numpy as np
 import pandas as pd
 import sqlalchemy
+import statsmodels.api as sm
 from correlation_and_plots import PredsCorrelation as pc
 from Morp_2d_plots import Morp2dPlots as mp2d
 from morp_plots import MorpPlots as mp
 from pred_and_resp_graphs import PlotGraph as pg
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
 from sqlalchemy import text
 
 path = fp.GLOBAL_PATH
@@ -49,32 +53,8 @@ def url_click(url):
             return f'<a target="_blank" href="{url}">link to plot</a>'
 
 
-def main():
+def html_report(data_set, predictors, response,file_name):
 
-    db_database = "baseball"
-    db_user = "root"
-    db_pass = "1997"
-    db_host = "localhost"
-    connect_string = (
-        f"mariadb+mariadbconnector://{db_user}:{db_pass}@{db_host}/{db_database}"
-    )
-    sql_engine = sqlalchemy.create_engine(connect_string)
-
-    query = """
-            SELECT * from final_feat_stats;
-        """
-
-    df = pd.DataFrame(sql_engine.connect().execute(text(query)))
-    df_new = df.iloc[:, 6:].fillna(0)
-
-    for i in df_new.columns:
-        if df_new[i].dtype == "O":
-            df_new[i] = df_new[i].astype(float)
-
-    data_set = df_new
-    predictors = df_new.columns[0:14].to_list()
-    response = str(df_new.columns[14])
-    #
     if len(data_set[response].value_counts()) > 2:
         resp_type = "Continuous"
 
@@ -293,7 +273,7 @@ def main():
             cat_cat_corr_t_df, "Cat_1", "Cat_2", "Correlation_T"
         )
         cat_cat_corr_v_htmp_plt = pc.corr_heatmap_plots(
-            cat_cat_corr_v_df, "Cat_1", "Cat_2", "Correlation_V"
+            cat_cat_corr_v_df, "Cat_1", "Cast_2", "Correlation_V"
         )
         cat_cat_corr_t_df = cat_cat_corr_t_df[
             cat_cat_corr_t_df["Cat_1"] != cat_cat_corr_t_df["Cat_2"]
@@ -562,7 +542,7 @@ def main():
         }
     ).set_table_styles(table_styles)
 
-    with open("dataset.html", "w") as out:
+    with open(file_name, "w") as out:
         out.write("<h5>Continuous Predictors Properties</h5>")
         out.write(cont_fet_prop_df.to_html())
         out.write("<br><br>")
@@ -602,6 +582,97 @@ def main():
         out.write("<br><br>")
         out.write("<h4>Continuous Continuous Brute force combination</h4>")
         out.write(cont_cont_2d_morp_df.to_html())
+
+    return True
+
+
+def ml_models(data_set, predictors, response):
+
+    # I have done a 70/30 train test split!
+    X_train, X_test, y_train, y_test = train_test_split(
+        data_set[predictors], data_set[response], test_size=0.3, random_state=42
+    )
+
+    # Initialize a random forest classifier with 100 trees
+    rf = RandomForestClassifier(n_estimators=100, random_state=42)
+
+    # Fit the random forest model on the training data
+    rf.fit(X_train, y_train)
+
+    # Evaluate the accuracy of the model
+    accuracy = rf.score(X_test, y_test)
+    print(f"Accuracy: {accuracy:.2f}")
+
+    logit_model = sm.Logit(y_train, X_train)
+    result = logit_model.fit()
+
+    # Print summary of results
+    print(result.summary())
+    y_pred = result.predict(X_test)
+
+    threshold = 0.5  # classification threshold
+    y_pred_class = (y_pred >= threshold).astype(int)  # convert probabilities to classes
+    accuracy = np.mean(y_pred_class == y_test)
+    print("Accuracy:", accuracy)
+
+
+def main():
+
+    db_database = "baseball"
+    db_user = "root"
+    db_pass = "1997"
+    db_host = "localhost"
+    connect_string = (
+        f"mariadb+mariadbconnector://{db_user}:{db_pass}@{db_host}/{db_database}"
+    )
+    sql_engine = sqlalchemy.create_engine(connect_string)
+
+    query = """
+            SELECT * from final_feat_stats;
+        """
+
+    df = pd.DataFrame(sql_engine.connect().execute(text(query)))
+    df_new = df.iloc[:, 6:].fillna(0)
+
+    for i in df_new.columns:
+        if df_new[i].dtype == "O":
+            df_new[i] = df_new[i].astype(float)
+
+    data_set = df_new
+    predictors = df_new.columns[0:16].to_list()
+    response = str(df_new.columns[16])
+
+    print("*" * 80)
+    print("*" * 80)
+
+    # initially I did not have the series streak features.
+    print("Without the streak columns!")
+    ml_models(data_set, df_new.columns[0:14].to_list(), str(df_new.columns[16]))
+    html_report(data_set, df_new.columns[0:14].to_list(), str(df_new.columns[16]), "dataset.html")
+
+    print("*" * 80)
+    print("*" * 80)
+
+    print("with the streak features")
+    ml_models(data_set, df_new.columns[0:16].to_list(), str(df_new.columns[16]))
+    html_report(data_set, df_new.columns[0:16].to_list(), str(df_new.columns[16]), "dataset_1.html")
+
+    print("*" * 80)
+    print("*" * 80)
+
+    print("after taking out hits_per_pitch and hits_per_innings_ratio features. "
+          "These columns had high correlation with batting_average_against_ratio")
+    ml_models(data_set, [i for i in df_new.columns[0:16].to_list() if i not in ['hits_per_innings_ration','hits_per_pitch_ratio']], str(df_new.columns[16]))
+    html_report(data_set, [i for i in df_new.columns[0:16].to_list() if i not in ['hits_per_innings_ration','hits_per_pitch_ratio']], str(df_new.columns[16]), "dataset_2.html")
+
+    print("*" * 80)
+    print("*" * 80)
+
+    print("I feel I could try some different combinations of features too, "
+          "but they give the same accuracy as well. I am not sure how to further improve the model in terms of accuracy."
+          " I will read more upon this and can hopefully improve the model over time. "
+          "I would say my last model with fewer features is my best model. "
+          "As it gives the same accuracy as previous models with more features.")
 
 
 if __name__ == "__main__":

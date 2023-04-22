@@ -150,9 +150,40 @@ order by
     , pc_left.local_date
 ;
 
+
+create index team_idx  on team_streak(team_id);
+
+create index game_idx on team_streak(game_id);
+
+
+drop table team_streaks_intm;
+
+create table team_streaks_intm as
+select
+    pc_d.game_id
+    , pc_d.team_id
+    , pc_d.local_date
+    , last_value(ts_home.home_streak) as last_home_streak
+    , last_value(ts_home.series_streak) as last_home_ser_streak
+    , last_value(ts_away.away_streak) as last_away_streak
+    , last_value(ts_away.series_streak) as  last_away_ser_streak
+
+from pitcher_count_with_date pc_d
+    left join team_streak ts_home on pc_d.game_id > ts_home.game_id and pc_d.team_id = ts_home.team_id and pc_d.homeTeam = 1
+    left join team_streak ts_away on pc_d.game_id > ts_away.game_id and pc_d.team_id = ts_away.team_id and pc_d.homeTeam = 0
+group by
+    pc_d.game_id
+    , pc_d.team_id
+    , pc_d.local_date
+;
+
+create index team_idx  on team_streaks_intm (team_id);
+
+create index game_idx on team_streaks_intm (game_id);
+
 create index pitcher_idx  on pitcher_features (pitcher);
 
-create index date_idx on pitcher_features (local_date);
+create index date_idx on pitcher_features (game_id);
 
 drop table final_feat_stats;
 
@@ -178,10 +209,14 @@ select
     , pf_home.overall_win_ratio / nullif(pf_away.overall_win_ratio, 0) as overall_win_ratio
     , pf_home.home_win_ratio / nullif(pf_away.away_win_ratio, 0) as home_away_win_ratio
     , pf_home.starting_pitch_home_w / nullif(pf_away.starting_pitch_away_w, 0) as starting_pitch_home_w_ratio
+    , ts_home.last_home_streak / nullif(ts_away.last_away_streak, 0) as home_away_strea_ratio
+    , ts_home.last_home_ser_streak / nullif(ts_away.last_away_ser_streak, 0) as series_streak_ratio
     , gm_res.home_team_wins
 from game_res gm_res
     left join pitcher_features pf_home on gm_res.local_date = pf_home.local_date and gm_res.home_pitcher = pf_home.pitcher
     left join pitcher_features pf_away on gm_res.local_date = pf_away.local_date and gm_res.away_pitcher = pf_away.pitcher
+    left join team_streaks_intm ts_home on gm_res.game_id = ts_home.game_id and gm_res.home_team_id = ts_home.team_id
+    left join team_streaks_intm ts_away on gm_res.game_id = ts_away.game_id and gm_res.away_team_id = ts_away.team_id
 order by
     gm_res.game_id
     , gm_res.local_date
