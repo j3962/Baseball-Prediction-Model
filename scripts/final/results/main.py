@@ -4,6 +4,8 @@ import sys
 import File_path as fp
 import numpy as np
 import pandas as pd
+
+# import plotly.graph_objects as go
 import sqlalchemy
 import statsmodels.api as sm
 from correlation_and_plots import PredsCorrelation as pc
@@ -11,6 +13,8 @@ from Morp_2d_plots import Morp2dPlots as mp2d
 from morp_plots import MorpPlots as mp
 from pred_and_resp_graphs import PlotGraph as pg
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import confusion_matrix
+from sklearn.preprocessing import LabelEncoder
 from sqlalchemy import text
 
 path = fp.GLOBAL_PATH
@@ -272,7 +276,7 @@ def html_report(data_set, predictors, response, file_name):
             cat_cat_corr_t_df, "Cat_1", "Cat_2", "Correlation_T"
         )
         cat_cat_corr_v_htmp_plt = pc.corr_heatmap_plots(
-            cat_cat_corr_v_df, "Cat_1", "Cast_2", "Correlation_V"
+            cat_cat_corr_v_df, "Cat_1", "Cat_2", "Correlation_V"
         )
         cat_cat_corr_t_df = cat_cat_corr_t_df[
             cat_cat_corr_t_df["Cat_1"] != cat_cat_corr_t_df["Cat_2"]
@@ -585,15 +589,32 @@ def html_report(data_set, predictors, response, file_name):
     return True
 
 
-def ml_models(data_set, predictors, response):
+def ml_models(data_set, predictors_cont, response, predictors_cat):
 
-    # I have done a 70/30 train test split!
+    if len(predictors_cat) > 0:
 
-    data_set["local_date"].dt.year
+        x_cont = data_set[predictors_cont]
+        x_cat = data_set[predictors_cat]
 
-    X_train = data_set[data_set["local_date"].dt.year < 2012][predictors]
-    X_test = data_set[data_set["local_date"].dt.year == 2012][predictors]
+        for i in x_cat:
+            le = LabelEncoder()
+            x_cat[i] = le.fit_transform(x_cat[i])
+
+        predictors = list(predictors_cont) + list(predictors_cat)
+
+        data_set = pd.concat([x_cont, x_cat, data_set[response]], axis=1)
+    else:
+
+        predictors = predictors_cont
+
+        data_set = pd.concat([data_set[predictors], data_set[response]], axis=1)
+
+    X_train = data_set[data_set["local_date"].dt.year < 2012][predictors[1:]]
+
+    X_test = data_set[data_set["local_date"].dt.year == 2012][predictors[1:]]
+
     y_train = data_set[data_set["local_date"].dt.year < 2012][response]
+
     y_test = data_set[data_set["local_date"].dt.year == 2012][response]
 
     # Initialize a random forest classifier with 100 trees
@@ -604,19 +625,38 @@ def ml_models(data_set, predictors, response):
 
     # Evaluate the accuracy of the model
     accuracy = rf.score(X_test, y_test)
-    print(f"Accuracy: {accuracy:.2f}")
+    print(f"Random Forrest Accuracy: {accuracy:.2f}")
+
+    y_pred = rf.predict(X_test)
+
+    cm = confusion_matrix(y_test, y_pred)
+    print("Random Forrest Confusion matrix:\n", cm)
 
     logit_model = sm.Logit(y_train, X_train)
     result = logit_model.fit()
-
-    # Print summary of results
+    #
+    # # Print summary of results
     print(result.summary())
-    y_pred = result.predict(X_test)
-
+    y_pred = result.predict(X_test) > 0.5
+    #
     threshold = 0.5  # classification threshold
     y_pred_class = (y_pred >= threshold).astype(int)  # convert probabilities to classes
     accuracy = np.mean(y_pred_class == y_test)
-    print("Accuracy:", accuracy)
+
+    cm = confusion_matrix(y_test, y_pred)
+    print("Confusion matrix:\n", cm)
+
+    # I tried SVM model but it takes too freakinnngggg long so not doing it
+
+    # # Train the SVM model on the training set
+    # svm.fit(X_train, y_train)
+    #
+    # # Make predictions on the testing set
+    # y_pred = svm.predict(X_test)
+    #
+    # # Compute the accuracy of the SVM model
+    # accuracy = accuracy_score(y_test, y_pred)
+    # print('Accuracy:', accuracy)
 
 
 def main():
@@ -641,125 +681,175 @@ def main():
         if df_new[i].dtype == "O":
             df_new[i] = df_new[i].astype(float)
 
+    query_diff = """
+            SELECT * from final_feat_stats_diff;
+        """
+
+    df_diff = pd.DataFrame(sql_engine.connect().execute(text(query_diff)))
+
+    df_diff_new = df_diff.iloc[:, 5:].fillna(0)
+
+    for i in df_diff_new.columns:
+        if type(df_diff_new[i][0]) == str:
+            continue
+        elif df_diff_new[i].dtype == "O":
+            df_diff_new[i] = df_diff_new[i].astype(float)
+
     data_set = df_new
+
+    data_set_diff = df_diff_new
 
     print("*" * 80)
     print("*" * 80)
 
     print(
-        "with the streak, avg_whip and avg_pitch_count features and avg_batting_average_against the rest"
+        "Initially, I had tried to take ration between home and away features. I was skeptical about it not doing "
+        "well! If at any time I had"
+        "a new starting pitcher from either of the team then my all the features were becoming zero."
+        " This was not desirable"
     )
+    html_report(
+        data_set,
+        df_new.columns[1:12],
+        str(df_new.columns[13]),
+        "dataset_ratio.html",
+    )
+
     ml_models(
         data_set,
-        [i for i in df_new.columns[0:20].to_list() if i not in ["local_date"]],
-        str(df_new.columns[20]),
+        df_new.columns[0:12],
+        str(df_new.columns[13]),
+        [],
+    )
+
+    print("*" * 80)
+    print("*" * 80)
+
+    print(
+        "Trying to take difference between home and away predictors. And suddenly my features do a lot better"
     )
 
     html_report(
-        data_set,
-        [i for i in df_new.columns[0:20].to_list() if i not in ["local_date"]],
-        str(df_new.columns[20]),
-        "dataset_1.html",
+        data_set_diff,
+        df_diff_new.columns[1:13],
+        str(df_diff_new.columns[24]),
+        "dataset_diff.html",
+    )
+
+    ml_models(
+        data_set_diff, df_diff_new.columns[0:13], str(df_diff_new.columns[24]), []
     )
 
     print("*" * 80)
     print("*" * 80)
 
-    # print(
-    #     "after taking out hits_per_pitch, hits_per_innings_ratio features and "
-    #     "outs_per_pitch_ratio,whip_ratio,avg_batting_average_against,avg_bb_9"
-    #     "overall_win_ratio,starting_pitch_home_w_ratio",
-    #     "home_away_win_ratio","home_away_strea_ratio",
-    #     "series_streak_ratio"
-    #     "These columns had high correlation with batting_average_against_ratio"
-    # )
-    # ml_models(
-    #     data_set,
-    #     [
-    #         i
-    #         for i in df_new.columns[0:19].to_list()
-    #     ],
-    #     str(df_new.columns[19]),
-    # )
-    # html_report(
-    #     data_set,
-    #     [
-    #         i
-    #         for i in df_new.columns[0:19].to_list()
-    #         if i not in ["hits_per_innings_ration", "hits_per_pitch_ratio","outs_per_pitch_ratio",
-    #                      "whip_ratio","avg_batting_average_against","avg_bb_9",
-    #                      "overall_win_ratio","starting_pitch_home_w_ratio",
-    #                      "series_streak_ratio",
-    #                      "home_away_win_ratio","home_away_strea_ratio"]
-    #     ],
-    #     str(df_new.columns[19]),
-    #     "dataset_2.html",
-    # )
-    #
-    #
-    #
-    # print("*" * 80)
-    # print("*" * 80)
-    #
-    # print(
-    #     "after taking out hits_per_pitch, hits_per_innings_ratio features"
-    #     "These columns had high correlation with batting_average_against_ratio"
-    # )
-    # ml_models(
-    #     data_set,
-    #     [
-    #         i
-    #         for i in df_new.columns[0:19].to_list()
-    #         if i not in ["hits_per_innings_ration", "hits_per_pitch_ratio"]
-    #     ],
-    #     str(df_new.columns[19]),
-    # )
-    # html_report(
-    #     data_set,
-    #     [
-    #         i
-    #         for i in df_new.columns[0:19].to_list()
-    #         if i not in ["hits_per_innings_ration", "hits_per_pitch_ratio"]
-    #     ],
-    #     str(df_new.columns[19]),
-    #     "dataset_3.html",
-    # )
-    #
-    # print("*" * 80)
-    # print("*" * 80)
-    #
-    # print(
-    #     "after taking out hits_per_pitch, hits_per_innings_ratio,batting_average_against_ratio features"
-    #     "These columns had high correlation with batting_average_against_ratio"
-    # )
-    # ml_models(
-    #     data_set,
-    #     [
-    #         i
-    #         for i in df_new.columns[0:19].to_list()
-    #         if i not in ["hits_per_innings_ration", "hits_per_pitch_ratio","batting_average_against_ratio"]
-    #     ],
-    #     str(df_new.columns[19]),
-    # )
-    # html_report(
-    #     data_set,
-    #     [
-    #         i
-    #         for i in df_new.columns[0:19].to_list()
-    #         if i not in ["hits_per_innings_ration", "hits_per_pitch_ratio","batting_average_against_ratio"]
-    #     ],
-    #     str(df_new.columns[19]),
-    #     "dataset_4.html",
-    # )
-    #
-    # print(
-    #     "I feel I could try some different combinations of features too, "
-    #     "but they give the same accuracy as well. I am not sure how to "
-    #     "further improve the model in terms of accuracy."
-    #     " I will read more upon this and can hopefully improve the model over time. "
-    #     "I would say my last model with fewer features is my best model. "
-    #     "As it gives the same accuracy as previous models with more features."
-    # )
+    print(
+        "Now, I am adding some categorical features. Here are"
+        "difference stats with stad_win_per,and few, extreme_temp_event, fav_overcast, hour"
+        "I finding home team win rate at each stadium did better than just stadium"
+    )
+
+    html_report(
+        data_set_diff,
+        df_diff_new.columns[1:16],
+        str(df_diff_new.columns[24]),
+        "dataset_diff_cat.html",
+    )
+
+    ml_models(
+        data_set_diff,
+        df_diff_new.columns[0:14],
+        str(df_diff_new.columns[24]),
+        df_diff_new.columns[14:17],
+    )
+
+    print("*" * 80)
+    print("*" * 80)
+
+    print(
+        "I took team level average of my bad features and suddenly my accuracy goes upp!!"
+    )
+    excluded_model_list = [
+        "batting_average_against_diff",
+        "strikeout_to_walk_diff",
+        "whip_diff",
+        "fip_diff",
+        "bb_9_diff",
+        "ip_gs_diff",
+        "extreme_temp_event",
+        "fav_overcast",
+        "match_start_hour",
+        "pitch_count_diff",
+    ]
+
+    excluded_list = [
+        "batting_average_against_diff",
+        "strikeout_to_walk_diff",
+        "whip_diff",
+        "fip_diff",
+        "bb_9_diff",
+        "ip_gs_diff",
+        "pitch_count_diff",
+    ]
+
+    html_report(
+        data_set_diff,
+        [i for i in df_diff_new.columns[1:24] if i not in excluded_list],
+        str(df_diff_new.columns[24]),
+        "dataset_diff_avg.html",
+    )
+
+    ml_models(
+        data_set_diff,
+        [i for i in df_diff_new.columns[0:24] if i not in excluded_model_list],
+        str(df_diff_new.columns[24]),
+        df_diff_new.columns[14:17],
+    )
+
+    print("Taking out bad features: ")
+    excluded_model_list = [
+        "batting_average_against_diff",
+        "strikeout_to_walk_diff",
+        "whip_diff",
+        "fip_diff",
+        "bb_9_diff",
+        "ip_gs_diff",
+        "extreme_temp_event",
+        "fav_overcast",
+        "match_start_hour",
+        "pitch_count_diff",
+        "series_streak_diff",
+        "starting_pitch_home_w_diff",
+        "home_away_win_diff",
+    ]
+
+    excluded_list = [
+        "batting_average_against_diff",
+        "strikeout_to_walk_diff",
+        "whip_diff",
+        "fip_diff",
+        "bb_9_diff",
+        "ip_gs_diff",
+        "match_start_hour",
+        "pitch_count_diff",
+        "series_streak_diff",
+        "starting_pitch_home_w_diff",
+        "home_away_win_diff",
+    ]
+
+    html_report(
+        data_set_diff,
+        [i for i in df_diff_new.columns[1:24] if i not in excluded_list],
+        str(df_diff_new.columns[24]),
+        "dataset_diff_avg_refined.html",
+    )
+
+    ml_models(
+        data_set_diff,
+        [i for i in df_diff_new.columns[0:24] if i not in excluded_model_list],
+        str(df_diff_new.columns[24]),
+        df_diff_new.columns[14:16],
+    )
 
 
 if __name__ == "__main__":

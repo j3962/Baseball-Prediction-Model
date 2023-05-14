@@ -2,7 +2,7 @@
 
 echo "inside the bash script"
 
-sleep 30
+sleep 35
 
 echo "after the 30s zzzzleep"
 
