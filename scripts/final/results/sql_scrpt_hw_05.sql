@@ -231,8 +231,7 @@ create index if not exists team_idx on avg_pitch_count (team_id);
 
 create index if not exists  game_idx on stadium_home_team_win_perc (game_id);
 
-
-drop table final_feat_stats;
+drop table if exists final_feat_stats;
 
 create table final_feat_stats as
 select

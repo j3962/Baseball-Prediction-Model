@@ -126,10 +126,14 @@ This graph is quite instrumental in understanding the relationship between predi
 
 We can quantify the graphy by finding the Weighted and Unweighted difference with mean of response. Higher these value better would be my predictor!
 
+![Mean_of_response_plot](readme_pics/mean_of_response_plot.png)
+
 2. p_value and t_value:
 
 Using the logit model of Stats-model library p_value and t_value between each predictor and response is calculated independently. This is done to find good features which Correlate with response.
 A good feature would have larger P-value less than 0.005 and absolute value of T-value greater than 2.5
+
+![P_value and T_value](readme_pics/p_value_and_t_value.png)
 
 3. Random Forest Variable Importance:
 
@@ -139,6 +143,7 @@ The importance of each feature in the data is determined by a random forest mode
 
 Correlation Matrix between all the Categorical predictors is made with highly correlated columns at the very top. This way highly correlated columns can be found and filtered.
 Calculated and mapped Tscuprow's and Cramers correlation between Categorical features.
+![Correlation Matrix heatmap plto](readme_pics/corr_mat.png)
 
 Also created a 2-Dimensional Mean of response plot between my Categorical features. This was done in order to find any relationship between Categorical features.
 
@@ -149,6 +154,8 @@ Calculated and mapped Pearson's correlation between all the pairs of continuous 
 
 Also created a 2-Dimensional Mean of response plot between my continuous features. This was done in order to find any relationship between continuous features.
 
+![Correlation Matrix heatmap plot](readme_pics/cont_cont_corr.png)
+
 6. Continuous-Categorical Correlation Matrix and Brute Force Analysis:
 
 Correlation Matrix between all the Continuous and Categorical predictors is made with highly correlated columns at the very top. This way highly correlated columns can be found and filtered.
@@ -156,9 +163,27 @@ Calculated and mapped correlation between all the pairs of continuous and catego
 
 Also created a 2-Dimensional Mean of response plot between my continuous and categorical features. This was done in order to find any relationship between continuous and categorical features.
 
+![2-d Mean of response plot](readme_pics/2d-morp.png)
+
 # Model Evaluation
 
 Feature data was divided into training and testing sets. With Any data beyond the year 2011 going into the testing set and the rest into training set.
 Make sure not to blindly use train-test split as that would lead to random split between train and test and model being trained on future results or features.
 
 Mainly used two Models: Random Forrest and Logistic Regression with different combinations of features.
+
+Initial model by taking ratio between home and away features:
+
+![first model](readme_pics/initial_model.png)
+
+Initial model by taking difference between home and away features:
+![first_model_diff](readme_pics/initial_model_diff.png)
+
+Model after adding categorical features:
+![first_model_diff](readme_pics/model_cat.png)
+
+Model after taking average at team level:
+![first_model_diff](readme_pics/model_avg.png)
+
+Model after taking average at team level:
+![first_model_diff](readme_pics/model_avg_final.png)

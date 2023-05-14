@@ -4,8 +4,8 @@ import sys
 import File_path as fp
 import numpy as np
 import pandas as pd
-
-# import plotly.graph_objects as go
+import plotly.graph_objects as go
+import plotly.io as pio
 import sqlalchemy
 import statsmodels.api as sm
 from correlation_and_plots import PredsCorrelation as pc
@@ -13,7 +13,7 @@ from Morp_2d_plots import Morp2dPlots as mp2d
 from morp_plots import MorpPlots as mp
 from pred_and_resp_graphs import PlotGraph as pg
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, roc_auc_score, roc_curve
 from sklearn.preprocessing import LabelEncoder
 from sqlalchemy import text
 
@@ -589,62 +589,119 @@ def html_report(data_set, predictors, response, file_name):
     return True
 
 
-def ml_models(data_set, predictors_cont, response, predictors_cat):
+def ml_models(
+    data_set, predictors_cont, predictors_cat, response, model_heading, file_name
+):
 
-    if len(predictors_cat) > 0:
+    with open(file_name, "a") as out:
 
-        x_cont = data_set[predictors_cont]
-        x_cat = data_set[predictors_cat]
+        if len(predictors_cat) > 0:
 
-        for i in x_cat:
-            le = LabelEncoder()
-            x_cat[i] = le.fit_transform(x_cat[i])
+            x_cont = data_set[predictors_cont]
+            x_cat = data_set[predictors_cat]
 
-        predictors = list(predictors_cont) + list(predictors_cat)
+            for i in x_cat:
+                le = LabelEncoder()
+                x_cat[i] = le.fit_transform(x_cat[i])
 
-        data_set = pd.concat([x_cont, x_cat, data_set[response]], axis=1)
-    else:
+            predictors = list(predictors_cont) + list(predictors_cat)
 
-        predictors = predictors_cont
+            data_set = pd.concat([x_cont, x_cat, data_set[response]], axis=1)
+        else:
 
-        data_set = pd.concat([data_set[predictors], data_set[response]], axis=1)
+            predictors = predictors_cont
 
-    X_train = data_set[data_set["local_date"].dt.year < 2012][predictors[1:]]
+            data_set = pd.concat([data_set[predictors], data_set[response]], axis=1)
 
-    X_test = data_set[data_set["local_date"].dt.year == 2012][predictors[1:]]
+        X_train = data_set[data_set["local_date"].dt.year < 2012][predictors[1:]]
 
-    y_train = data_set[data_set["local_date"].dt.year < 2012][response]
+        X_test = data_set[data_set["local_date"].dt.year == 2012][predictors[1:]]
 
-    y_test = data_set[data_set["local_date"].dt.year == 2012][response]
+        y_train = data_set[data_set["local_date"].dt.year < 2012][response]
 
-    # Initialize a random forest classifier with 100 trees
-    rf = RandomForestClassifier(n_estimators=100, random_state=42)
+        y_test = data_set[data_set["local_date"].dt.year == 2012][response]
 
-    # Fit the random forest model on the training data
-    rf.fit(X_train, y_train)
+        roc_list = []
 
-    # Evaluate the accuracy of the model
-    accuracy = rf.score(X_test, y_test)
-    print(f"Random Forrest Accuracy: {accuracy:.2f}")
+        # Initialize a random forest classifier with 100 trees
+        rf = RandomForestClassifier(n_estimators=100, random_state=42)
 
-    y_pred = rf.predict(X_test)
+        # Fit the random forest model on the training data
+        rf.fit(X_train, y_train)
 
-    cm = confusion_matrix(y_test, y_pred)
-    print("Random Forrest Confusion matrix:\n", cm)
+        # Evaluate the accuracy of the model
+        accuracy = rf.score(X_test, y_test)
+        print(f"Random Forrest Accuracy: {accuracy:.2f}")
 
-    logit_model = sm.Logit(y_train, X_train)
-    result = logit_model.fit()
-    #
-    # # Print summary of results
-    print(result.summary())
-    y_pred = result.predict(X_test) > 0.5
-    #
-    threshold = 0.5  # classification threshold
-    y_pred_class = (y_pred >= threshold).astype(int)  # convert probabilities to classes
-    accuracy = np.mean(y_pred_class == y_test)
+        y_pred = rf.predict(X_test)
 
-    cm = confusion_matrix(y_test, y_pred)
-    print("Confusion matrix:\n", cm)
+        cm = confusion_matrix(y_test, y_pred)
+
+        print("Random Forrest Confusion matrix:\n", cm)
+
+        y_prob = rf.predict_proba(X_test)
+        fpr, tpr, thresholds = roc_curve(y_test, y_prob[:, 1])
+        auc_score = roc_auc_score(y_test, y_prob[:, 1])
+
+        roc_list.append(("Random Forrest", fpr, tpr, auc_score))
+
+        logit_model = sm.Logit(y_train, X_train)
+        result = logit_model.fit()
+
+        #
+        # # Print summary of results
+        print(result.summary())
+        y_pred = result.predict(X_test) > 0.5
+        #
+        threshold = 0.5  # classification threshold
+        y_pred_class = (y_pred >= threshold).astype(
+            int
+        )  # convert probabilities to classes
+        accuracy = np.mean(y_pred_class == y_test)
+        print("Logit model accuracy:", accuracy)
+        cm = confusion_matrix(y_test, y_pred)
+        print("Confusion matrix:\n", cm)
+
+        fpr, tpr, thresholds = roc_curve(y_test, y_pred)
+        auc_score = roc_auc_score(y_test, y_pred)
+
+        roc_list.append(("Logit regression", fpr, tpr, auc_score))
+
+        fig = go.Figure()
+
+        for name, fpr, tpr, auc_score in roc_list:
+            fig.add_trace(
+                go.Scatter(
+                    x=fpr,
+                    y=tpr,
+                    mode="lines",
+                    name="{} (AUC = {:.2f})".format(name, auc_score),
+                )
+            )
+
+        fig.update_layout(
+            title="Receiver Operating Characteristic (ROC) Curve",
+            xaxis_title="False Positive Rate",
+            yaxis_title="True Positive Rate",
+            legend=dict(x=0.6, y=-0.2),
+            xaxis=dict(range=[0, 1], constrain="domain"),
+            yaxis=dict(range=[0, 1], scaleanchor="x", scaleratio=1),
+            hovermode="closest",
+        )
+
+        fig.show()
+
+        file_name = (
+            fp.GLOBAL_PATH_2D_MORP + "/" + "roc_curve_" + model_heading + ".html"
+        )
+        fig.write_html(
+            file=file_name,
+            include_plotlyjs="cdn",
+        )
+
+        out.write("<br><br>")
+        out.write(f"<h5>{model_heading}</h5>")
+        out.write(pio.to_html(fig, include_plotlyjs="cdn"))
 
     # I tried SVM model but it takes too freakinnngggg long so not doing it
 
@@ -718,8 +775,10 @@ def main():
     ml_models(
         data_set,
         df_new.columns[0:12],
-        str(df_new.columns[13]),
         [],
+        str(df_new.columns[13]),
+        "Initial Model",
+        "dataset_ratio.html",
     )
 
     print("*" * 80)
@@ -737,7 +796,12 @@ def main():
     )
 
     ml_models(
-        data_set_diff, df_diff_new.columns[0:13], str(df_diff_new.columns[24]), []
+        data_set_diff,
+        df_diff_new.columns[0:13],
+        [],
+        str(df_diff_new.columns[24]),
+        "Diff Modell",
+        "dataset_diff.html",
     )
 
     print("*" * 80)
@@ -759,8 +823,10 @@ def main():
     ml_models(
         data_set_diff,
         df_diff_new.columns[0:14],
-        str(df_diff_new.columns[24]),
         df_diff_new.columns[14:17],
+        str(df_diff_new.columns[24]),
+        "Model with Categorical features",
+        "dataset_diff_cat.html",
     )
 
     print("*" * 80)
@@ -802,8 +868,10 @@ def main():
     ml_models(
         data_set_diff,
         [i for i in df_diff_new.columns[0:24] if i not in excluded_model_list],
-        str(df_diff_new.columns[24]),
         df_diff_new.columns[14:17],
+        str(df_diff_new.columns[24]),
+        "Model with average",
+        "dataset_diff_avg.html",
     )
 
     print("Taking out bad features: ")
@@ -847,8 +915,10 @@ def main():
     ml_models(
         data_set_diff,
         [i for i in df_diff_new.columns[0:24] if i not in excluded_model_list],
-        str(df_diff_new.columns[24]),
         df_diff_new.columns[14:16],
+        str(df_diff_new.columns[24]),
+        "Refined Model",
+        "dataset_diff_avg_refined.html",
     )
 
 
