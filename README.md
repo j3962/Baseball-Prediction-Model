@@ -126,14 +126,14 @@ This graph is quite instrumental in understanding the relationship between predi
 
 We can quantify the graphy by finding the Weighted and Unweighted difference with mean of response. Higher these value better would be my predictor!
 
-![Mean_of_response_plot](final/readme_pics/mean_of_response_plot.png)
+![Mean_of_response_plot](scripts/final/readme_pics/mean_of_response_plot.png)
 
 2. p_value and t_value:
 
 Using the logit model of Stats-model library p_value and t_value between each predictor and response is calculated independently. This is done to find good features which Correlate with response.
 A good feature would have larger P-value less than 0.005 and absolute value of T-value greater than 2.5
 
-![P_value and T_value](final/readme_pics/p_value_and_t_value.png)
+![P_value and T_value](scripts/final/readme_pics/p_value_and_t_value.png)
 
 3. Random Forest Variable Importance:
 
@@ -143,7 +143,7 @@ The importance of each feature in the data is determined by a random forest mode
 
 Correlation Matrix between all the Categorical predictors is made with highly correlated columns at the very top. This way highly correlated columns can be found and filtered.
 Calculated and mapped Tscuprow's and Cramers correlation between Categorical features.
-![Correlation Matrix heatmap plto](final/readme_pics/corr_mat.png)
+![Correlation Matrix heatmap plto](scripts/final/readme_pics/corr_mat.png)
 
 Also created a 2-Dimensional Mean of response plot between my Categorical features. This was done in order to find any relationship between Categorical features.
 
@@ -154,7 +154,7 @@ Calculated and mapped Pearson's correlation between all the pairs of continuous 
 
 Also created a 2-Dimensional Mean of response plot between my continuous features. This was done in order to find any relationship between continuous features.
 
-![Correlation Matrix heatmap plot](readme_pics/cont_cont_corr.png)
+![Correlation Matrix heatmap plot](scripts/readme_pics/cont_cont_corr.png)
 
 6. Continuous-Categorical Correlation Matrix and Brute Force Analysis:
 
