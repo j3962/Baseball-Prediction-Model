@@ -97,7 +97,7 @@ Continuous features:
 Categorical features:
 
 1. Extreme_temp_event: I feel extreme Heat or Cold would be an advantage for the home team. So, calculated a categorical field to understand weather there was an extreme temp event prevalent or not before starting. If the game temp was above 95F or below 38F then it was considered as an extreme event.
-2. fav_overcast: Noticed that, games which had rain or dome had higher percentage of home team wins (58%) compared to the population mean of (54%). So, created a categorical feature which would be 'Favorable' if there was rain or dome overcast condition. And 'Unfavorable' otherwise.
+2. fav_overcast: Noticed that, games which had rain or dome had higher percentage of home team wins (58%) compared to the population mean of (51%). So, created a categorical feature which would be 'Favorable' if there was rain or dome overcast condition. And 'Unfavorable' otherwise.
 
 Creating Categorical features kind of helped my Continuous features. I noticed that the P-value decreased for Continuous features in the logistic model summary.
 
@@ -126,14 +126,14 @@ This graph is quite instrumental in understanding the relationship between predi
 
 We can quantify the graphy by finding the Weighted and Unweighted difference with mean of response. Higher these value better would be my predictor!
 
-![Mean_of_response_plot](readme_pics/mean_of_response_plot.png)
+![Mean_of_response_plot](final/readme_pics/mean_of_response_plot.png)
 
 2. p_value and t_value:
 
 Using the logit model of Stats-model library p_value and t_value between each predictor and response is calculated independently. This is done to find good features which Correlate with response.
 A good feature would have larger P-value less than 0.005 and absolute value of T-value greater than 2.5
 
-![P_value and T_value](readme_pics/p_value_and_t_value.png)
+![P_value and T_value](final/readme_pics/p_value_and_t_value.png)
 
 3. Random Forest Variable Importance:
 
@@ -143,7 +143,7 @@ The importance of each feature in the data is determined by a random forest mode
 
 Correlation Matrix between all the Categorical predictors is made with highly correlated columns at the very top. This way highly correlated columns can be found and filtered.
 Calculated and mapped Tscuprow's and Cramers correlation between Categorical features.
-![Correlation Matrix heatmap plto](readme_pics/corr_mat.png)
+![Correlation Matrix heatmap plto](final/readme_pics/corr_mat.png)
 
 Also created a 2-Dimensional Mean of response plot between my Categorical features. This was done in order to find any relationship between Categorical features.
 
