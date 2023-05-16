@@ -2,12 +2,19 @@ import os
 import sys
 
 import File_path as fp
+import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
+import plotly.io as pio
 import sqlalchemy
+import statsmodels.api as sm
 from correlation_and_plots import PredsCorrelation as pc
 from Morp_2d_plots import Morp2dPlots as mp2d
 from morp_plots import MorpPlots as mp
 from pred_and_resp_graphs import PlotGraph as pg
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import confusion_matrix, roc_auc_score, roc_curve
+from sklearn.preprocessing import LabelEncoder
 from sqlalchemy import text
 
 path = fp.GLOBAL_PATH
@@ -49,32 +56,8 @@ def url_click(url):
             return f'<a target="_blank" href="{url}">link to plot</a>'
 
 
-def main():
+def html_report(data_set, predictors, response, file_name):
 
-    db_database = "baseball"
-    db_user = "root"
-    db_pass = "1997"
-    db_host = "localhost"
-    connect_string = (
-        f"mariadb+mariadbconnector://{db_user}:{db_pass}@{db_host}/{db_database}"
-    )
-    sql_engine = sqlalchemy.create_engine(connect_string)
-
-    query = """
-            SELECT * from final_feat_stats;
-        """
-
-    df = pd.DataFrame(sql_engine.connect().execute(text(query)))
-    df_new = df.iloc[:, 6:].fillna(0)
-
-    for i in df_new.columns:
-        if df_new[i].dtype == "O":
-            df_new[i] = df_new[i].astype(float)
-
-    data_set = df_new
-    predictors = df_new.columns[0:14].to_list()
-    response = str(df_new.columns[14])
-    #
     if len(data_set[response].value_counts()) > 2:
         resp_type = "Continuous"
 
@@ -562,7 +545,7 @@ def main():
         }
     ).set_table_styles(table_styles)
 
-    with open("dataset.html", "w") as out:
+    with open(file_name, "w") as out:
         out.write("<h5>Continuous Predictors Properties</h5>")
         out.write(cont_fet_prop_df.to_html())
         out.write("<br><br>")
@@ -602,6 +585,341 @@ def main():
         out.write("<br><br>")
         out.write("<h4>Continuous Continuous Brute force combination</h4>")
         out.write(cont_cont_2d_morp_df.to_html())
+
+    return True
+
+
+def ml_models(
+    data_set, predictors_cont, predictors_cat, response, model_heading, file_name
+):
+
+    with open(file_name, "a") as out:
+
+        if len(predictors_cat) > 0:
+
+            x_cont = data_set[predictors_cont]
+            x_cat = data_set[predictors_cat]
+
+            for i in x_cat:
+                le = LabelEncoder()
+                x_cat[i] = le.fit_transform(x_cat[i])
+
+            predictors = list(predictors_cont) + list(predictors_cat)
+
+            data_set = pd.concat([x_cont, x_cat, data_set[response]], axis=1)
+        else:
+
+            predictors = predictors_cont
+
+            data_set = pd.concat([data_set[predictors], data_set[response]], axis=1)
+
+        X_train = data_set[data_set["local_date"].dt.year < 2012][predictors[1:]]
+
+        X_test = data_set[data_set["local_date"].dt.year == 2012][predictors[1:]]
+
+        y_train = data_set[data_set["local_date"].dt.year < 2012][response]
+
+        y_test = data_set[data_set["local_date"].dt.year == 2012][response]
+
+        roc_list = []
+
+        # Initialize a random forest classifier with 100 trees
+        rf = RandomForestClassifier(n_estimators=100, random_state=42)
+
+        # Fit the random forest model on the training data
+        rf.fit(X_train, y_train)
+
+        # Evaluate the accuracy of the model
+        accuracy = rf.score(X_test, y_test)
+        print(f"Random Forrest Accuracy: {accuracy:.2f}")
+
+        y_pred = rf.predict(X_test)
+
+        cm = confusion_matrix(y_test, y_pred)
+
+        print("Random Forrest Confusion matrix:\n", cm)
+
+        y_prob = rf.predict_proba(X_test)
+        fpr, tpr, thresholds = roc_curve(y_test, y_prob[:, 1])
+        auc_score = roc_auc_score(y_test, y_prob[:, 1])
+
+        roc_list.append(("Random Forrest", fpr, tpr, auc_score))
+
+        logit_model = sm.Logit(y_train, X_train)
+        result = logit_model.fit()
+
+        #
+        # # Print summary of results
+        print(result.summary())
+        y_pred = result.predict(X_test) > 0.5
+        #
+        threshold = 0.5  # classification threshold
+        y_pred_class = (y_pred >= threshold).astype(
+            int
+        )  # convert probabilities to classes
+        accuracy = np.mean(y_pred_class == y_test)
+        print("Logit model accuracy:", accuracy)
+        cm = confusion_matrix(y_test, y_pred)
+        print("Confusion matrix:\n", cm)
+
+        fpr, tpr, thresholds = roc_curve(y_test, y_pred)
+        auc_score = roc_auc_score(y_test, y_pred)
+
+        roc_list.append(("Logit regression", fpr, tpr, auc_score))
+
+        fig = go.Figure()
+
+        for name, fpr, tpr, auc_score in roc_list:
+            fig.add_trace(
+                go.Scatter(
+                    x=fpr,
+                    y=tpr,
+                    mode="lines",
+                    name="{} (AUC = {:.2f})".format(name, auc_score),
+                )
+            )
+
+        fig.update_layout(
+            title="Receiver Operating Characteristic (ROC) Curve",
+            xaxis_title="False Positive Rate",
+            yaxis_title="True Positive Rate",
+            legend=dict(x=0.6, y=-0.2),
+            xaxis=dict(range=[0, 1], constrain="domain"),
+            yaxis=dict(range=[0, 1], scaleanchor="x", scaleratio=1),
+            hovermode="closest",
+        )
+
+        fig.show()
+
+        file_name = (
+            fp.GLOBAL_PATH_2D_MORP + "/" + "roc_curve_" + model_heading + ".html"
+        )
+        fig.write_html(
+            file=file_name,
+            include_plotlyjs="cdn",
+        )
+
+        out.write("<br><br>")
+        out.write(f"<h5>{model_heading}</h5>")
+        out.write(pio.to_html(fig, include_plotlyjs="cdn"))
+
+    # I tried SVM model but it takes too freakinnngggg long so not doing it
+
+    # # Train the SVM model on the training set
+    # svm.fit(X_train, y_train)
+    #
+    # # Make predictions on the testing set
+    # y_pred = svm.predict(X_test)
+    #
+    # # Compute the accuracy of the SVM model
+    # accuracy = accuracy_score(y_test, y_pred)
+    # print('Accuracy:', accuracy)
+
+
+def main():
+
+    db_database = "baseball"
+    db_user = "root"
+    db_pass = "1997"
+    db_host = "jay_mariadb"
+    connect_string = (
+        f"mariadb+mariadbconnector://{db_user}:{db_pass}@{db_host}/{db_database}"
+    )
+    sql_engine = sqlalchemy.create_engine(connect_string)
+
+    query = """
+            SELECT * from final_feat_stats;
+        """
+
+    df = pd.DataFrame(sql_engine.connect().execute(text(query)))
+    df_new = df.iloc[:, 5:].fillna(0)
+
+    for i in df_new.columns:
+        if df_new[i].dtype == "O":
+            df_new[i] = df_new[i].astype(float)
+
+    query_diff = """
+            SELECT * from final_feat_stats_diff;
+        """
+
+    df_diff = pd.DataFrame(sql_engine.connect().execute(text(query_diff)))
+
+    df_diff_new = df_diff.iloc[:, 5:].fillna(0)
+
+    for i in df_diff_new.columns:
+        if type(df_diff_new[i][0]) == str:
+            continue
+        elif df_diff_new[i].dtype == "O":
+            df_diff_new[i] = df_diff_new[i].astype(float)
+
+    data_set = df_new
+
+    data_set_diff = df_diff_new
+
+    print("*" * 80)
+    print("*" * 80)
+
+    print(
+        "Initially, I had tried to take ration between home and away features. I was skeptical about it not doing "
+        "well! If at any time I had"
+        "a new starting pitcher from either of the team then my all the features were becoming zero."
+        " This was not desirable"
+    )
+    html_report(
+        data_set,
+        df_new.columns[1:12],
+        str(df_new.columns[13]),
+        "dataset_ratio.html",
+    )
+
+    ml_models(
+        data_set,
+        df_new.columns[0:12],
+        [],
+        str(df_new.columns[13]),
+        "Initial Model",
+        "dataset_ratio.html",
+    )
+
+    print("*" * 80)
+    print("*" * 80)
+
+    print(
+        "Trying to take difference between home and away predictors. And suddenly my features do a lot better"
+    )
+
+    html_report(
+        data_set_diff,
+        df_diff_new.columns[1:13],
+        str(df_diff_new.columns[24]),
+        "dataset_diff.html",
+    )
+
+    ml_models(
+        data_set_diff,
+        df_diff_new.columns[0:13],
+        [],
+        str(df_diff_new.columns[24]),
+        "Diff Modell",
+        "dataset_diff.html",
+    )
+
+    print("*" * 80)
+    print("*" * 80)
+
+    print(
+        "Now, I am adding some categorical features. Here are"
+        "difference stats with stad_win_per,and few, extreme_temp_event, fav_overcast, hour"
+        "I finding home team win rate at each stadium did better than just stadium"
+    )
+
+    html_report(
+        data_set_diff,
+        df_diff_new.columns[1:16],
+        str(df_diff_new.columns[24]),
+        "dataset_diff_cat.html",
+    )
+
+    ml_models(
+        data_set_diff,
+        df_diff_new.columns[0:14],
+        df_diff_new.columns[14:17],
+        str(df_diff_new.columns[24]),
+        "Model with Categorical features",
+        "dataset_diff_cat.html",
+    )
+
+    print("*" * 80)
+    print("*" * 80)
+
+    print(
+        "I took team level average of my bad features and suddenly my accuracy goes upp!!"
+    )
+    excluded_model_list = [
+        "batting_average_against_diff",
+        "strikeout_to_walk_diff",
+        "whip_diff",
+        "fip_diff",
+        "bb_9_diff",
+        "ip_gs_diff",
+        "extreme_temp_event",
+        "fav_overcast",
+        "match_start_hour",
+        "pitch_count_diff",
+    ]
+
+    excluded_list = [
+        "batting_average_against_diff",
+        "strikeout_to_walk_diff",
+        "whip_diff",
+        "fip_diff",
+        "bb_9_diff",
+        "ip_gs_diff",
+        "pitch_count_diff",
+    ]
+
+    html_report(
+        data_set_diff,
+        [i for i in df_diff_new.columns[1:24] if i not in excluded_list],
+        str(df_diff_new.columns[24]),
+        "dataset_diff_avg.html",
+    )
+
+    ml_models(
+        data_set_diff,
+        [i for i in df_diff_new.columns[0:24] if i not in excluded_model_list],
+        df_diff_new.columns[14:17],
+        str(df_diff_new.columns[24]),
+        "Model with average",
+        "dataset_diff_avg.html",
+    )
+
+    print("Taking out bad features: ")
+    excluded_model_list = [
+        "batting_average_against_diff",
+        "strikeout_to_walk_diff",
+        "whip_diff",
+        "fip_diff",
+        "bb_9_diff",
+        "ip_gs_diff",
+        "extreme_temp_event",
+        "fav_overcast",
+        "match_start_hour",
+        "pitch_count_diff",
+        "series_streak_diff",
+        "starting_pitch_home_w_diff",
+        "home_away_win_diff",
+    ]
+
+    excluded_list = [
+        "batting_average_against_diff",
+        "strikeout_to_walk_diff",
+        "whip_diff",
+        "fip_diff",
+        "bb_9_diff",
+        "ip_gs_diff",
+        "match_start_hour",
+        "pitch_count_diff",
+        "series_streak_diff",
+        "starting_pitch_home_w_diff",
+        "home_away_win_diff",
+    ]
+
+    html_report(
+        data_set_diff,
+        [i for i in df_diff_new.columns[1:24] if i not in excluded_list],
+        str(df_diff_new.columns[24]),
+        "dataset_diff_avg_refined.html",
+    )
+
+    ml_models(
+        data_set_diff,
+        [i for i in df_diff_new.columns[0:24] if i not in excluded_model_list],
+        df_diff_new.columns[14:16],
+        str(df_diff_new.columns[24]),
+        "Refined Model",
+        "dataset_diff_avg_refined.html",
+    )
 
 
 if __name__ == "__main__":

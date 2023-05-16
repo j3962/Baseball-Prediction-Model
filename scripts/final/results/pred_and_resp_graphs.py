@@ -262,9 +262,8 @@ class PlotGraph:
         log_reg = sm.Logit(y, X).fit()
 
         # Get the stats
-        t_value = round(log_reg.tvalues[0], 6)
-        p_value = "{:.6e}".format(log_reg.pvalues[0])
-        p_value = np.float64(p_value)
+        t_value = log_reg.tvalues[0]
+        p_value = "{:}".format(log_reg.pvalues[0])
 
         return {
             "Column_name": fet_nm,

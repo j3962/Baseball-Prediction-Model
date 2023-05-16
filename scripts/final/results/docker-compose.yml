@@ -1,0 +1,21 @@
+version: "3.8"
+services:
+  jay_mariadb:
+    container_name: jay_mariadb
+    image: mariadb:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: 1997
+      MYSQL_DATABASE: baseball
+    ports:
+      - "3307:3306"
+
+  python_driver_container:
+    container_name: python_driver_container
+    volumes:
+      - ./:/app
+    build:
+      context: .
+      dockerfile: first_dock_file.Dockerfile
+    depends_on:
+      - jay_mariadb
+    command: ["/bin/bash", "./first_bash.sh"]
