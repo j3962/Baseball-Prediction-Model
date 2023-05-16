@@ -154,7 +154,7 @@ Calculated and mapped Pearson's correlation between all the pairs of continuous 
 
 Also created a 2-Dimensional Mean of response plot between my continuous features. This was done in order to find any relationship between continuous features.
 
-![Correlation Matrix heatmap plot](scripts/readme_pics/cont_cont_corr.png)
+![Correlation Matrix heatmap plot](scripts/final/readme_pics/cont_cont_corr.png)
 
 6. Continuous-Categorical Correlation Matrix and Brute Force Analysis:
 
@@ -163,7 +163,7 @@ Calculated and mapped correlation between all the pairs of continuous and catego
 
 Also created a 2-Dimensional Mean of response plot between my continuous and categorical features. This was done in order to find any relationship between continuous and categorical features.
 
-![2-d Mean of response plot](readme_pics/2d-morp.png)
+![2-d Mean of response plot](scripts/final/readme_pics/2d-morp.png)
 
 # Model Evaluation
 
@@ -174,16 +174,16 @@ Mainly used two Models: Random Forrest and Logistic Regression with different co
 
 Initial model by taking ratio between home and away features:
 
-![first model](readme_pics/initial_model.png)
+![first model](scripts/final/readme_pics/initial_model.png)
 
 Initial model by taking difference between home and away features:
-![first_model_diff](readme_pics/initial_model_diff.png)
+![first_model_diff](scripts/final/readme_pics/initial_model_diff.png)
 
 Model after adding categorical features:
-![first_model_diff](readme_pics/model_cat.png)
+![first_model_diff](scripts/final/readme_pics/model_cat.png)
 
 Model after taking average at team level:
-![first_model_diff](readme_pics/model_avg.png)
+![first_model_diff](scripts/final/readme_pics/model_avg.png)
 
 Model after taking average at team level:
-![first_model_diff](readme_pics/model_avg_final.png)
+![first_model_diff](scripts/final/readme_pics/model_avg_final.png)
